@@ -104,7 +104,7 @@ inline std::string DiscoverServer(uint16_t broadcastPort = 12345, int timeoutSec
     tv.tv_usec = 0;
 
 #ifdef _WIN32
-    typedef unsigned int socklen_t;
+    typedef int socklen_t;
 #endif
 
     char buffer[1024];
