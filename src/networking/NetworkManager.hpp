@@ -103,6 +103,10 @@ inline std::string DiscoverServer(uint16_t broadcastPort = 12345, int timeoutSec
     tv.tv_sec = timeoutSeconds;
     tv.tv_usec = 0;
 
+#ifdef _WIN32
+    typedef unsigned int socklen_t;
+#endif
+
     char buffer[1024];
     sockaddr_in senderAddr{};
     socklen_t addrLen = sizeof(senderAddr);
