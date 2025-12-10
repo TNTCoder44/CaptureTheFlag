@@ -1,5 +1,10 @@
 #pragma once
 
+#ifdef WIN32
+#define NOGDI
+#define NOUSER
+#endif
+
 #include "raylib.h"
 #include "networking/NetworkManager.hpp"
 
@@ -12,13 +17,15 @@ class Game
 {
 private:
     const std::string title = "Capture The Flag";
-
-    bool runAsServer;
-    std::string serverIP;
-    std::string lastReceived;
+    bool running = true;
 
     // Create network manager
     NetworkManager network;
+    bool runAsServer;
+    std::string lastReceived;
+
+    std::atomic<bool> runThread{true};
+    std::thread broadcastThread;
 
 public: 
     Game();
