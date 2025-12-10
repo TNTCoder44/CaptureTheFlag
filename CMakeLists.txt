@@ -11,7 +11,19 @@ DOWNLOAD_EXTRACT_TIMESTAMP OFF
 URL https://github.com/raysan5/raylib/archive/refs/tags/5.5.tar.gz
 )
 FetchContent_GetProperties(raylib)
-if (NOT raylib_POPULATED) # Have we downloaded raylib yet?
+
+FetchContent_Declare(
+    enet
+    GIT_REPOSITORY https://github.com/lsalzman/enet.git
+    GIT_TAG master
+)
+FetchContent_MakeAvailable(enet)
+
+target_include_directories(enet PUBLIC
+    ${enet_SOURCE_DIR}/include
+)
+
+if (NOT raylib_POPULATED) 
 set(FETCHCONTENT_QUIET NO)
 FetchContent_Populate(raylib)
 set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE) # don't build the supplied examples
@@ -26,7 +38,7 @@ elseif (WIN32)
    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /ENTRY:mainCRTStartup")
 endif()
 
-file(GLOB_RECURSE SRC CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*")
+file(GLOB_RECURSE SRC CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c" "${CMAKE_CURRENT_SOURCE_DIR}/src/*.hpp")
 
 if (WIN32)
 add_executable(${PROJECT_NAME}
@@ -45,12 +57,12 @@ add_executable(${PROJECT_NAME}
   
 endif()
 
-target_link_libraries(${PROJECT_NAME} raylib)
+target_link_libraries(${PROJECT_NAME} PRIVATE raylib enet)
 
 if (APPLE)
-    target_link_libraries(${PROJECT_NAME} "-framework IOKit")
-    target_link_libraries(${PROJECT_NAME} "-framework Cocoa")
-    target_link_libraries(${PROJECT_NAME} "-framework OpenGL")
+    target_link_libraries(${PROJECT_NAME} PRIVATE "-framework IOKit")
+    target_link_libraries(${PROJECT_NAME} PRIVATE "-framework Cocoa")
+    target_link_libraries(${PROJECT_NAME} PRIVATE "-framework OpenGL")
 elseif (WIN32)
     target_compile_definitions(${PROJECT_NAME} PRIVATE "_CRT_SECURE_NO_WARNINGS")
     target_compile_options(${PROJECT_NAME} PRIVATE "/W4")
