@@ -69,66 +69,69 @@ void Game::run()
         // Press SPACE to send a message
         if (IsKeyPressed(KEY_SPACE)) {
             if (runAsServer) {
-                network.SendToClient("Hello from SERVER!");
+                network.Send("Hello from SERVER!");
             } else {
-                network.SendToServer("Hello from CLIENT!");
+                network.Send("Hello from CLIENT!");
             }
         }
 
         if (runAsServer)
         {
             // Server controls the square
-            if (IsKeyPressed(KEY_LEFT))
+            if (IsKeyDown(KEY_LEFT))
             {
                 squarePos.x -= speed * dt;
             }
-            else if (IsKeyPressed(KEY_RIGHT))
+            else if (IsKeyDown(KEY_RIGHT))
             {
                 squarePos.x += speed * dt;
             }
-            else if (IsKeyPressed(KEY_UP))
+            else if (IsKeyDown(KEY_UP))
             {
                 squarePos.y -= speed * dt;
             }
-            else if (IsKeyPressed(KEY_DOWN))
+            else if (IsKeyDown(KEY_DOWN))
             {
                 squarePos.y += speed * dt;
             }
-            network.SendToServer(Vector2Serializable{squarePos.x, squarePos.y}.serialize());
+            network.Send(Vector2Serializable{squarePos.x, squarePos.y}.serialize());
         }
         else
         {
             // Client controls the circle
-            if (IsKeyPressed(KEY_LEFT))
+            if (IsKeyDown(KEY_LEFT))
             {
                 circlePos.x -= speed * dt;
             }
-            else if (IsKeyPressed(KEY_RIGHT))
+            else if (IsKeyDown(KEY_RIGHT))
             {
                 circlePos.x += speed * dt;
             }
-            else if (IsKeyPressed(KEY_UP))
+            else if (IsKeyDown(KEY_UP))
             {
                 circlePos.y -= speed * dt;
             }
-            else if (IsKeyPressed(KEY_DOWN))
+            else if (IsKeyDown(KEY_DOWN))
             {
                 circlePos.y += speed * dt;
             }
-            network.SendToClient(Vector2Serializable{circlePos.x, circlePos.y}.serialize());
+            network.Send(Vector2Serializable{circlePos.x, circlePos.y}.serialize());
         }
 
         // Poll network events
-        auto msg = network.PollEvent();
-        if (msg.has_value()) {
-            Vector2Serializable opponent = Vector2Serializable::deserialize(msg.value());
-            if (runAsServer) circlePos = {opponent.x, opponent.y}; // update client circle
-            else squarePos = {opponent.x, opponent.y};          // update server square
+        for (int i = 0; i<5; i++) {
+            auto msg = network.PollEvent();
+            if (msg.has_value()) {
+                Vector2Serializable opponent = Vector2Serializable::deserialize(msg.value());
+                if (runAsServer) circlePos = {opponent.x, opponent.y}; // update client circle
+                else squarePos = {opponent.x, opponent.y};          // update server square
+            }
         }
 
         // Draw
         BeginDrawing();
         ClearBackground(RAYWHITE);
+        DrawFPS(10, 10);
 
         //DrawText(runAsServer ? "SERVER MODE" : "CLIENT MODE", 20, 20, 20, BLACK);
         //DrawText("Press SPACE to send a message", 20, 60, 20, DARKGRAY);

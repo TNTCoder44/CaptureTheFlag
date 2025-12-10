@@ -27,9 +27,13 @@ public:
     bool StartServer(enet_uint16 port);
     bool StartClient(const std::string& host, enet_uint16 port);
 
-    // Send messages
-    void SendToServer(const std::string& message);
-    void SendToClient(const std::string& message); // only server
+    inline void Send(const std::string& message) {
+        if (isServer) {
+            SendToClient(message);
+        } else {
+            SendToServer(message);
+        }
+    }
 
     // Poll for received messages
     std::optional<std::string> PollEvent();
@@ -44,6 +48,10 @@ private:
 
     std::queue<std::string> messageQueue;
     std::mutex queueMutex;
+
+    // Send messages
+    void SendToServer(const std::string& message);
+    void SendToClient(const std::string& message); // only server
 
     void PushMessage(const std::string& message);
 };
