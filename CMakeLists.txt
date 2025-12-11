@@ -14,8 +14,8 @@ FetchContent_GetProperties(raylib)
 
 FetchContent_Declare(
     enet
-    GIT_REPOSITORY https://github.com/lsalzman/enet.git
-    GIT_TAG master
+    DOWNLOAD_EXTRACT_TIMESTAMP OFF
+    URL https://github.com/lsalzman/enet/archive/refs/tags/v1.3.18.tar.gz
 )
 FetchContent_MakeAvailable(enet)
 

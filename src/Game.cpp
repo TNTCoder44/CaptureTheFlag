@@ -16,7 +16,7 @@ struct Vector2Serializable {
 
 Game::Game() 
 {
-    runAsServer = false;   // change to true to run server mode
+    runAsServer = true;   // change to true to run server mode
 
     if (runAsServer) {
         network.StartServer(1234);
