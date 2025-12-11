@@ -64,6 +64,8 @@ if (APPLE)
     target_link_libraries(${PROJECT_NAME} PRIVATE "-framework Cocoa")
     target_link_libraries(${PROJECT_NAME} PRIVATE "-framework OpenGL")
 elseif (WIN32)
+    target_link_libraries(${PROJECT_NAME} PRIVATE ws2_32 winmm)
+
     target_compile_definitions(${PROJECT_NAME} PRIVATE "_CRT_SECURE_NO_WARNINGS")
     target_compile_options(${PROJECT_NAME} PRIVATE "/W4")
     target_link_options(${PROJECT_NAME} PRIVATE "/SUBSYSTEM:Windows;/ENTRY:mainCRTStartup")
