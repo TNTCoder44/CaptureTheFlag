@@ -41,11 +41,11 @@ Game::Game()
 {
     runAsServer = false;   // change to true to run server mode
     
-    InitWindow(800, 600, runAsServer ? "Server" : "Client");
+    InitWindow(800, 600, "Capture The Flag");
     SetTargetFPS(120);
-
-    button = LoadTexture("res/button.png"); // Load button texture
-
+    
+    background = LoadTexture("../res/background.png");
+    
     lastReceived = "";
 
     beginGame = true;
@@ -55,7 +55,7 @@ Game::~Game()
 {
     CloseWindow();        // Close window and OpenGL context
     network.Shutdown();
-    UnloadTexture(button);  // Unload button texture
+    UnloadTexture(background);  // Unload button texture
 
     if (runAsServer) {
         runThread = false;
@@ -69,8 +69,8 @@ void Game::run()
 
     Vector2 mousePoint = { 0.0f, 0.0f };
 
-    Button startButton{"res/start_button.png", {300, 150}, 0.65};
-    Button exitButton{"res/exit_button.png", {300, 300}, 0.65};
+    Button startButton{"../res/start_button.png", {300, 150}, 0.65};
+    Button exitButton{"../res/exit_button.png", {300, 300}, 0.65};
     
     // Main game loop
     while (!WindowShouldClose() && running)    // Detect window close button or ESC key
@@ -82,12 +82,16 @@ void Game::run()
        
         if(startButton.isPressed(mousePoint, mousePressed))
         {
-            
+            runAsServer = true;
+            StartNetworking();
+            beginGame = false;
         }
 
         if(exitButton.isPressed(mousePoint, mousePressed))
         {
-            
+            runAsServer = false;
+            StartNetworking();
+            beginGame = false;
         }
 
       
@@ -104,6 +108,7 @@ void Game::run()
         // Draw
         BeginDrawing();
         ClearBackground(BLACK);
+        DrawTexture(background, 0, 0, WHITE);
         //DrawFPS(10, 10);
 
         if (beginGame)

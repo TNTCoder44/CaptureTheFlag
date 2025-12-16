@@ -30,7 +30,7 @@ private:
     std::thread broadcastThread;
 
     // Textures
-    Texture2D button;
+    Texture2D background;
 
 public: 
     Game();
