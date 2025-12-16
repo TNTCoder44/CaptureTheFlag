@@ -19,6 +19,8 @@ private:
     const std::string title = "Capture The Flag";
     bool running = true;
 
+    bool beginGame;
+
     // Create network manager
     NetworkManager network;
     bool runAsServer;
@@ -27,10 +29,16 @@ private:
     std::atomic<bool> runThread{true};
     std::thread broadcastThread;
 
+    // Textures
+    Texture2D button;
+
 public: 
     Game();
     ~Game();
 
     void run();
+
+private:
+    void StartNetworking();
 
 };
