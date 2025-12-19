@@ -46,10 +46,22 @@ add_executable(${PROJECT_NAME}
     "${SRC}" 
 )
 
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    "${CMAKE_SOURCE_DIR}/res"
+    "$<TARGET_FILE_DIR:${PROJECT_NAME}>/res"
+)
+
 elseif(APPLE)
 add_executable(${PROJECT_NAME}
     MACOSX_BUNDLE
     ${SRC})
+
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    ${CMAKE_SOURCE_DIR}/res
+    $<TARGET_BUNDLE_DIR:${PROJECT_NAME}>/Contents/res
+)
 
 else() # Linux
 add_executable(${PROJECT_NAME}
