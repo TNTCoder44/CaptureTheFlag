@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=CaptureTheFlag
+Exec=./CaptureTheFlag
+Icon=./res/icon.png
+Terminal=false
+Categories=Development;Graphics;
+Comment=C++ 2D Game

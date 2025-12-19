@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+    <dict>
+        <key>CFBundleDocumentTypes</key>
+        <array>
+            <dict>
+                <key>CFBundleTypeExtensions</key>
+                <array>
+                    <string>*</string>
+                </array>
+                <key>CFBundleTypeName</key>
+                <string>AllTypes</string>
+                <key>CFBundleTypeOSTypes</key>
+                <array>
+                    <string>****</string>
+                </array>
+                <key>CFBundleTypeRole</key>
+                <string>Editor</string>
+            </dict>
+            <dict>
+                <key>CFBundleTypeIconFile</key>
+                <string>icon.icns</string>
+                <key>CFBundleTypeName</key>
+                <string>CaptureTheFlag</string>
+                <key>CFBundleTypeRole</key>
+                <string>Editor</string>
+                <key>LSIsAppleDefaultForType</key>
+                <true/>
+            </dict>
+        </array>
+        <key>CFBundleName</key>
+        <string>CaptureTheFlag</string>
+        <key>CFBundleIconFile</key>
+        <string>icon.icns</string>
+        <key>CFBundlePackageType</key>
+        <string>APPL</string>
+        <key>CFBundleGetInfoString</key>
+        <string>CaptureTheFlag, Copyright (c) 2025/2026 Janis, Andrej, Aidan</string>
+        <key>CFBundleExecutable</key>
+        <string>CaptureTheFlag</string>
+        <key>CFBundleIdentifier</key>
+        <string>com.jaa.CaptureTheFlag</string>
+        <key>CFBundleShortVersionString</key>
+        <string>1.0</string>
+        <key>CFBundleVersion</key>
+        <string>1.0</string>
+        <key>NSPrincipalClass</key>
+        <string>NSApplication</string>
+        <key>NSHighResolutionCapable</key>
+        <string>True</string>
+    </dict>
+</plist>

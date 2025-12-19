@@ -33,7 +33,7 @@ _again:
         std::string serverIP = DiscoverServer();
         if (serverIP.empty()) {
             std::cout << "No server found on LAN.\n";
-            std::this_thread::sleep_for(std::chrono::seconds(1));
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
             goto _again;
         }
         std::cout << "Found server at " << serverIP << "\n";
@@ -43,12 +43,19 @@ _again:
 
 Game::Game() 
 {
-    runAsServer = false;   // change to true to run server mode
+    runAsServer = false; 
     
     InitWindow(800, 600, "Capture The Flag");
+
+#ifdef _WIN32
+    Image icon = LoadImage(FileSystem::getPath("res/icon.png").c_str()); 
+    SetWindowIcon(icon);
+    UnloadImage(icon);
+#endif
+
+
     SetTargetFPS(120);
-
-
+    InitAudioDevice();      // Initialize audio device
     
     background = LoadTexture(FileSystem::getPath("res/background.png").c_str());
     
@@ -58,10 +65,12 @@ Game::Game()
 }
 
 Game::~Game() 
-{
-    CloseWindow();        // Close window and OpenGL context
+{  
     network.Shutdown();
     UnloadTexture(background);  // Unload button texture
+    CloseAudioDevice();     // Close audio device
+
+    CloseWindow();        // Close window and OpenGL context
 
     if (runAsServer) {
         runThread = false;
@@ -77,7 +86,7 @@ void Game::run()
     
     Button startButton{FileSystem::getPath("res/player1.png").c_str(), {300, 150}, 0.65};
     Button exitButton{FileSystem::getPath("res/player2.png").c_str(), {300, 300}, 0.65};
-    
+
     // Main game loop
     while (!WindowShouldClose() && running)    // Detect window close button or ESC key
     {
@@ -107,7 +116,6 @@ void Game::run()
             auto msg = network.PollEvent();
             if (msg.has_value()) {
                 Vector2Serializable opponent = Vector2Serializable::deserialize(msg.value());
-               
             }
         }
 
