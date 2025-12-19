@@ -1,7 +1,11 @@
 #include "Game.hpp"
 #include <iostream>
+#include <filesystem>
 
 #include "utils/Button.hpp"
+#include "utils/Filesystem.hpp"
+
+namespace fs = std::filesystem;
 
 struct Vector2Serializable {
     float x, y;
@@ -43,8 +47,10 @@ Game::Game()
     
     InitWindow(800, 600, "Capture The Flag");
     SetTargetFPS(120);
+
+
     
-    background = LoadTexture("../res/background.png");
+    background = LoadTexture(FileSystem::getPath("res/background.png").c_str());
     
     lastReceived = "";
 
@@ -68,9 +74,9 @@ void Game::run()
     float speed = 200.0f;
 
     Vector2 mousePoint = { 0.0f, 0.0f };
-
-    Button startButton{"../res/player1.png", {300, 150}, 0.65};
-    Button exitButton{"../res/player2.png", {300, 300}, 0.65};
+    
+    Button startButton{FileSystem::getPath("res/player1.png").c_str(), {300, 150}, 0.65};
+    Button exitButton{FileSystem::getPath("res/player2.png").c_str(), {300, 300}, 0.65};
     
     // Main game loop
     while (!WindowShouldClose() && running)    // Detect window close button or ESC key
