@@ -1,7 +1,7 @@
 #include "Game.hpp"
 #include <iostream>
 
-#include "button.hpp"
+#include "utils/Button.hpp"
 
 struct Vector2Serializable {
     float x, y;
@@ -69,8 +69,8 @@ void Game::run()
 
     Vector2 mousePoint = { 0.0f, 0.0f };
 
-    Button startButton{"../res/start_button.png", {300, 150}, 0.65};
-    Button exitButton{"../res/exit_button.png", {300, 300}, 0.65};
+    Button startButton{"../res/player1.png", {300, 150}, 0.65};
+    Button exitButton{"../res/player2.png", {300, 300}, 0.65};
     
     // Main game loop
     while (!WindowShouldClose() && running)    // Detect window close button or ESC key
@@ -79,22 +79,22 @@ void Game::run()
         mousePoint = GetMousePosition();
 
         bool mousePressed = IsMouseButtonPressed(MOUSE_LEFT_BUTTON);
-       
-        if(startButton.isPressed(mousePoint, mousePressed))
+        startButton.Update(mousePoint);
+        exitButton.Update(mousePoint);
+        
+        if(startButton.isPressed())
         {
             runAsServer = true;
             StartNetworking();
             beginGame = false;
         }
 
-        if(exitButton.isPressed(mousePoint, mousePressed))
+        if(exitButton.isPressed())
         {
             runAsServer = false;
             StartNetworking();
             beginGame = false;
         }
-
-      
 
         // Poll network events
         for (int i = 0; i<5; i++) {
@@ -114,10 +114,8 @@ void Game::run()
         if (beginGame)
         {
             //DrawText("Capture The Flag", 320, 200, 30, BLACK);
-            
             startButton.Draw();
             exitButton.Draw();
-           
         }
 
         EndDrawing();
