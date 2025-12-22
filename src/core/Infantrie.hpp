@@ -13,4 +13,6 @@ public:
     Infantrie(Vector2 pos, int team);
     ~Infantrie() override;
 
+    void Draw(bool inverted) override;
+
 };

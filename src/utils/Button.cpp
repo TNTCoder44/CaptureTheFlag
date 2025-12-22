@@ -30,7 +30,7 @@ Button::~Button()
 void Button::Draw()
 {
     sourceRec.y = btnState * frameHeight;
-    DrawTextureRec(texture, sourceRec, (Vector2){btnBounds.x, btnBounds.y}, WHITE); // Draw button frame
+    DrawTextureRec(texture, sourceRec, Vector2{btnBounds.x, btnBounds.y}, WHITE); // Draw button frame
 }
 
 void Button::Update(Vector2 mousePos)

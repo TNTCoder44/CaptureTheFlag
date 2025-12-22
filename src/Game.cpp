@@ -5,7 +5,7 @@
 #include "utils/Button.hpp"
 #include "utils/Filesystem.hpp"
 
-namespace fs = std::filesystem;
+#include "core/Infantrie.hpp"
 
 struct Vector2Serializable {
     float x, y;
@@ -45,7 +45,7 @@ Game::Game()
 {
     runAsServer = false; 
     
-    InitWindow(800, 600, "Capture The Flag");
+    InitWindow(screenWidth, screenHeight, "Capture The Flag");
 
 #ifdef _WIN32
     Image icon = LoadImage(FileSystem::getPath("res/icon.png").c_str()); 
@@ -58,6 +58,9 @@ Game::Game()
     InitAudioDevice();      // Initialize audio device
     
     background = LoadTexture(FileSystem::getPath("res/background.png").c_str());
+
+    entities.push_back(new Infantrie({100, 200}, 0));
+    entities.push_back(new Infantrie({700, 200}, 1));
     
     lastReceived = "";
 
@@ -66,6 +69,11 @@ Game::Game()
 
 Game::~Game() 
 {  
+    for (auto& entity : entities) {
+        delete entity;
+    }
+    entities.clear();
+
     network.Shutdown();
     UnloadTexture(background);  // Unload button texture
     CloseAudioDevice();     // Close audio device
@@ -84,8 +92,8 @@ void Game::run()
 
     Vector2 mousePoint = { 0.0f, 0.0f };
     
-    Button startButton{FileSystem::getPath("res/player1.png").c_str(), {300, 150}, 0.65};
-    Button exitButton{FileSystem::getPath("res/player2.png").c_str(), {300, 300}, 0.65};
+    Button player1Button{FileSystem::getPath("res/player1.png").c_str(), {300, 150}, 1.1};
+    Button player2Button{FileSystem::getPath("res/player2.png").c_str(), {300, 300}, 1.1};
 
     // Main game loop
     while (!WindowShouldClose() && running)    // Detect window close button or ESC key
@@ -94,22 +102,26 @@ void Game::run()
         mousePoint = GetMousePosition();
 
         bool mousePressed = IsMouseButtonPressed(MOUSE_LEFT_BUTTON);
-        startButton.Update(mousePoint);
-        exitButton.Update(mousePoint);
+       
+        if (beginGame)
+        {
+            player1Button.Update(mousePoint);
+            player2Button.Update(mousePoint);
+            if(player1Button.isPressed())
+            {
+                runAsServer = true;
+                StartNetworking();
+                beginGame = false;
+            }
+            else if(player2Button.isPressed())
+            {
+                runAsServer = false;
+                StartNetworking();
+                beginGame = false;
+            }
+        }
         
-        if(startButton.isPressed())
-        {
-            runAsServer = true;
-            StartNetworking();
-            beginGame = false;
-        }
-
-        if(exitButton.isPressed())
-        {
-            runAsServer = false;
-            StartNetworking();
-            beginGame = false;
-        }
+        
 
         // Poll network events
         for (int i = 0; i<5; i++) {
@@ -121,15 +133,21 @@ void Game::run()
 
         // Draw
         BeginDrawing();
-        ClearBackground(BLACK);
+        ClearBackground(WHITE);
         DrawTexture(background, 0, 0, WHITE);
         //DrawFPS(10, 10);
 
         if (beginGame)
         {
-            //DrawText("Capture The Flag", 320, 200, 30, BLACK);
-            startButton.Draw();
-            exitButton.Draw();
+            player1Button.Draw();
+            player2Button.Draw();      
+        }
+        else
+        {
+            for (auto& entity : entities)
+            {
+                entity->Draw(!runAsServer);
+            }  
         }
 
         EndDrawing();

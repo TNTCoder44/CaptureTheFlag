@@ -8,10 +8,12 @@
 #include "raylib.h"
 #include "networking/NetworkManager.hpp"
 
+#include "core/Entity.hpp"
+
 #include <string>
 
 constexpr const int screenWidth = 800;
-constexpr const int screenHeight = 450;
+constexpr const int screenHeight = 800;
 
 class Game 
 {
@@ -31,6 +33,9 @@ private:
 
     // Textures
     Texture2D background;
+
+    // Entities
+    std::vector<Entity*> entities; // for troops only.
 
 public: 
     Game();
