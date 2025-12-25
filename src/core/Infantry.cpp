@@ -21,6 +21,10 @@ Infantry::Infantry(Vector2 pos, int team) : Entity(pos, team)
         texture = LoadTexture(FileSystem::getPath("res/B.png").c_str());
     else
         throw std::runtime_error("Invalid team for Infantry entity");
+
+    // set collider
+    colliderType = ColliderType::Circle;
+    circle.radius = 40.0f;
     
 }
 
@@ -70,7 +74,7 @@ Entity* Infantry::bestEnt(std::vector<Entity*> entities)
 		if (entity->getHealth() <= 0.f)
             continue;
 
-        float newDist = math::distance(entity->getPosition(), position);
+        float newDist = math::DistanceEntities(entity, this);
 
         if (newDist < dist)
         {

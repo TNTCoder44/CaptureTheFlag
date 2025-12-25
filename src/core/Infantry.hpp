@@ -16,13 +16,18 @@ private:
     const float damage = 10.0f;     // 10 dmg / s
 
     float health;
-
-public:
     int id;
+
+    ColliderType colliderType;
+    CircleCollider circle;
+    RectCollider rect;
 
 public:
     Infantry(Vector2 pos, int team);
     ~Infantry() override;
+
+    int getID() const override { return id; }
+    void setID(int newId) override { id = newId; }
 
     bool canAttack() const override;
     float getAttackRange() const override { return attackRange; }
@@ -35,6 +40,9 @@ public:
 	void setPosition(Vector2 pos) override{ position = pos; }
 	Vector2 getPosition() const override { return position; }
     int getTeam() const override { return team; }
+    ColliderType getCollidorType() const override { return colliderType; }
+    CircleCollider getCircleCollider() const override { return circle; }
+    RectCollider getRectCollider() const override { return rect; }
 
     void update(float dt, bool shotsFired) override;
     void draw(bool inverted) override;

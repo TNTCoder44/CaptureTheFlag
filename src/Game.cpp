@@ -154,6 +154,7 @@ void Game::run()
                         shotsfired = true;
                     }
                 }
+                printf("%f\n", entity->getHealth());
                 entity->update(dt, shotsfired);
             }
         }
@@ -182,10 +183,39 @@ void Game::run()
             for (auto& entity : entities)
             {
                 entity->draw(!runAsServer);
-				DrawCircleLines(entity->getPosition().x, entity->getPosition().y, entity->getAttackRange(), RED);
+				
+                if (entity->getCollidorType() == ColliderType::Circle) {
+                    DrawCircleLines(
+                        entity->getPosition().x,
+                        entity->getPosition().y,
+                        entity->getCircleCollider().radius,
+                        BLACK
+                    );
+                }
+
+                if (entity->getCollidorType() == ColliderType::Rect) {
+                    DrawRectangleLines(
+                        entity->getPosition().x - entity->getRectCollider().halfSize.x,
+                        entity->getPosition().y - entity->getRectCollider().halfSize.y,
+                        entity->getRectCollider().halfSize.x * 2,
+                        entity->getRectCollider().halfSize.y * 2,
+                        BLUE
+                    );
+                }
             }  
         }
 
         EndDrawing();
     }
+}
+
+void Game::destroyEntity(int id)
+{
+    entities.erase(
+        std::remove_if(entities.begin(), entities.end(),
+            [id](Entity* e) {
+                return e->getID() == id;
+            }),
+        entities.end()
+    );
 }

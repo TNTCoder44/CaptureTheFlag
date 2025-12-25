@@ -45,5 +45,5 @@ public:
 
 private:
     void startNetworking();
-
+    void destroyEntity(int id);
 };
