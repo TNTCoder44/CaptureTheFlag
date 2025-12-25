@@ -53,7 +53,6 @@ Game::Game()
     UnloadImage(icon);
 #endif
 
-
     SetTargetFPS(120);
     InitAudioDevice();      // Initialize audio device
     

@@ -7,6 +7,8 @@ Infantrie::Infantrie(Vector2 pos, int team) : Entity(pos, team)
     position = pos;
     this->team = team;
 
+    health = maxHealth;
+
     if (team == 0)
         texture = LoadTexture(FileSystem::getPath("res/player1.png").c_str());
     else if (team == 1)
@@ -19,6 +21,18 @@ Infantrie::Infantrie(Vector2 pos, int team) : Entity(pos, team)
 Infantrie::~Infantrie()
 {
     UnloadTexture(texture);
+}
+
+bool Infantrie::CanAttack() const
+{
+    if (cooldownTimer >= 0)
+        return true;
+    
+}
+
+void Infantrie::Update(float dt)
+{
+    cooldownTimer += dt;
 }
 
 void Infantrie::Draw(bool inverted)
