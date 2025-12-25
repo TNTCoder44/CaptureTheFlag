@@ -44,6 +44,6 @@ public:
     void run();
 
 private:
-    void StartNetworking();
+    void startNetworking();
 
 };

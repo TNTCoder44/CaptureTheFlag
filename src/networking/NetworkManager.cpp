@@ -11,11 +11,11 @@ NetworkManager::NetworkManager()
 }
 
 NetworkManager::~NetworkManager() {
-    Shutdown();
+    shutdown();
     enet_deinitialize();
 }
 
-bool NetworkManager::StartServer(enet_uint16 port) {
+bool NetworkManager::startServer(enet_uint16 port) {
     ENetAddress address;
     address.host = ENET_HOST_ANY;
     address.port = port;
@@ -31,7 +31,7 @@ bool NetworkManager::StartServer(enet_uint16 port) {
     return true;
 }
 
-bool NetworkManager::StartClient(const std::string& hostIP, enet_uint16 port) {
+bool NetworkManager::startClient(const std::string& hostIP, enet_uint16 port) {
     host = enet_host_create(nullptr, 1, 2, 0, 0); // client, 1 peer
     if (!host) {
         std::cerr << "Failed to create ENet client host!\n";
@@ -78,7 +78,7 @@ void NetworkManager::SendToClient(const std::string& message) {
     enet_host_flush(host);
 }
 
-std::optional<std::string> NetworkManager::PollEvent() {
+std::optional<std::string> NetworkManager::pollEvent() {
     if (!host) return std::nullopt;
 
     ENetEvent event;
@@ -114,7 +114,7 @@ void NetworkManager::PushMessage(const std::string& message) {
     messageQueue.push(message);
 }
 
-void NetworkManager::Shutdown() {
+void NetworkManager::shutdown() {
     if (host) {
         enet_host_destroy(host);
         host = nullptr;

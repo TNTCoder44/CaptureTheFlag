@@ -27,13 +27,13 @@ Button::~Button()
     UnloadTexture(texture);
 }
 
-void Button::Draw()
+void Button::draw()
 {
     sourceRec.y = btnState * frameHeight;
     DrawTextureRec(texture, sourceRec, Vector2{btnBounds.x, btnBounds.y}, WHITE); // Draw button frame
 }
 
-void Button::Update(Vector2 mousePos)
+void Button::update(Vector2 mousePos)
 {
     Rectangle rect = {position.x, position.y, static_cast<float>(texture.width), static_cast<float>(frameHeight)};
 

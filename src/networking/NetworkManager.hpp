@@ -24,10 +24,10 @@ public:
     ~NetworkManager();
 
     // Server/Client startup
-    bool StartServer(enet_uint16 port);
-    bool StartClient(const std::string& host, enet_uint16 port);
+    bool startServer(enet_uint16 port);
+    bool startClient(const std::string& host, enet_uint16 port);
 
-    inline void Send(const std::string& message) {
+    inline void send(const std::string& message) {
         if (isServer) {
             SendToClient(message);
         } else {
@@ -36,10 +36,10 @@ public:
     }
 
     // Poll for received messages
-    std::optional<std::string> PollEvent();
+    std::optional<std::string> pollEvent();
 
     // Shutdown network
-    void Shutdown();
+    void shutdown();
 
 private:
     ENetHost* host;

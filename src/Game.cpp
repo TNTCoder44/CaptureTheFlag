@@ -1,11 +1,13 @@
 #include "Game.hpp"
+
 #include <iostream>
 #include <filesystem>
+#include <memory>
 
 #include "utils/Button.hpp"
 #include "utils/Filesystem.hpp"
 
-#include "core/Infantrie.hpp"
+#include "core/Infantry.hpp"
 
 struct Vector2Serializable {
     float x, y;
@@ -20,10 +22,10 @@ struct Vector2Serializable {
     }
 };
 
-void Game::StartNetworking()
+void Game::startNetworking()
 {
     if (runAsServer) {
-        network.StartServer(1234);
+        network.startServer(1234);
         broadcastThread = std::thread([this]() {
             BroadcastServer(runThread); // second argument uses default
         });
@@ -37,7 +39,7 @@ _again:
             goto _again;
         }
         std::cout << "Found server at " << serverIP << "\n";
-        network.StartClient(serverIP, 1234);
+        network.startClient(serverIP, 1234);
     }
 }
 
@@ -58,8 +60,8 @@ Game::Game()
     
     background = LoadTexture(FileSystem::getPath("res/background.png").c_str());
 
-    entities.push_back(new Infantrie({100, 200}, 0));
-    entities.push_back(new Infantrie({700, 200}, 1));
+    entities.push_back(new Infantry({100, 200}, 0));
+    entities.push_back(new Infantry({500, 200}, 1));
     
     lastReceived = "";
 
@@ -73,7 +75,7 @@ Game::~Game()
     }
     entities.clear();
 
-    network.Shutdown();
+    network.shutdown();
     UnloadTexture(background);  // Unload button texture
     CloseAudioDevice();     // Close audio device
 
@@ -94,37 +96,71 @@ void Game::run()
     Button player1Button{FileSystem::getPath("res/player1.png").c_str(), {300, 150}, 1.1};
     Button player2Button{FileSystem::getPath("res/player2.png").c_str(), {300, 300}, 1.1};
 
+    Vector2 posA = {100,200};
+
     // Main game loop
     while (!WindowShouldClose() && running)    // Detect window close button or ESC key
     {
-        float dt = GetFrameTime();
-        mousePoint = GetMousePosition();
+        float dt = GetFrameTime();              // delta time that passes between the loop cycles
+        mousePoint = GetMousePosition();        // current mouse pos
 
         bool mousePressed = IsMouseButtonPressed(MOUSE_LEFT_BUTTON);
-       
-        if (beginGame)
+
+        if (beginGame)                  // start of the game, starting screen
         {
-            player1Button.Update(mousePoint);
-            player2Button.Update(mousePoint);
+            player1Button.update(mousePoint);
+            player2Button.update(mousePoint);
             if(player1Button.isPressed())
             {
                 runAsServer = true;
-                StartNetworking();
+                startNetworking();
                 beginGame = false;
             }
             else if(player2Button.isPressed())
             {
                 runAsServer = false;
-                StartNetworking();
+                startNetworking();
                 beginGame = false;
             }
         }
-        
-        
+        else
+        {
+            if (IsKeyDown(KEY_A))
+                posA.x -= speed * dt;
+            if (IsKeyDown(KEY_D))
+                posA.x += speed * dt;
+            if (IsKeyDown(KEY_W))
+                posA.y -= speed * dt;
+            if (IsKeyDown(KEY_S))
+                posA.y += speed * dt;
+
+
+            entities[0]->setPosition(Vector2{ posA.x,posA.y });
+
+
+            // player updates
+            for (auto& entity : entities)
+            {
+				if (entity->getHealth() <= 0)
+					entities.erase(std::remove(entities.begin(), entities.end(), entity), entities.end());
+
+                bool shotsfired = false;
+                if (entity->canAttack())
+                {
+                    auto* ent = entity->bestEnt(entities);
+                    if (ent != nullptr)
+                    {
+                        ent->setHealth(ent->getHealth() - entity->getDamage());
+                        shotsfired = true;
+                    }
+                }
+                entity->update(dt, shotsfired);
+            }
+        }
 
         // Poll network events
         for (int i = 0; i<5; i++) {
-            auto msg = network.PollEvent();
+            auto msg = network.pollEvent();
             if (msg.has_value()) {
                 Vector2Serializable opponent = Vector2Serializable::deserialize(msg.value());
             }
@@ -133,19 +169,20 @@ void Game::run()
         // Draw
         BeginDrawing();
         ClearBackground(WHITE);
-        DrawTexture(background, 0, 0, WHITE);
+        //DrawTexture(background, 0, 0, WHITE);
         //DrawFPS(10, 10);
 
         if (beginGame)
         {
-            player1Button.Draw();
-            player2Button.Draw();      
+            player1Button.draw();
+            player2Button.draw();      
         }
         else
         {
             for (auto& entity : entities)
             {
-                entity->Draw(!runAsServer);
+                entity->draw(!runAsServer);
+				DrawCircleLines(entity->getPosition().x, entity->getPosition().y, entity->getAttackRange(), RED);
             }  
         }
 

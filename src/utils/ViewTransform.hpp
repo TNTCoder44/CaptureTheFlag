@@ -30,8 +30,10 @@ inline void DrawEntityTexture(
     Texture2D tex,
     Vector2 pos,
     Vector2 size,
-    bool inverted
+    bool inverted,
+    float scale
 ) {
+
     Rectangle src = {
         0, 0,
         (float)tex.width,
@@ -44,14 +46,16 @@ inline void DrawEntityTexture(
         src.width *= -1;
     }
 
+    Vector2 scaledSize = {size.x * scale, size.y * scale};
+
     Rectangle dst = {
         pos.x,
         pos.y,
-        size.x,
-        size.y
+        scaledSize.x,
+        scaledSize.y
     };
 
-    Vector2 origin = { size.x / 2, size.y / 2 };
+    Vector2 origin = { scaledSize.x / 2, scaledSize.y / 2 };
 
     DrawTexturePro(tex, src, dst, origin, 0.0f, WHITE);
 }

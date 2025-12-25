@@ -6,8 +6,8 @@ class Button
     public:
         Button(const char* imagePath, Vector2 imagePosition, float scale);
         ~Button();
-        void Draw();
-        void Update(Vector2 mousePos);
+        void draw();
+        void update(Vector2 mousePos);
 
         inline bool isPressed()
         {

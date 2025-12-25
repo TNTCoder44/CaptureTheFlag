@@ -56,6 +56,10 @@ file(GLOB_RECURSE SRC CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp" 
 if (WIN32)
 set(WINDOWS_ICON_RESOURCE "${CMAKE_CURRENT_SOURCE_DIR}/configuration/windows/Resource.rc")
 
+# if global config doesn't work
+include_directories(${CMAKE_BINARY_DIR}/x64-Release/configuration) # for release 
+include_directories(${CMAKE_BINARY_DIR}/x64-Debug/configuration) # for debug build
+
 add_executable(${PROJECT_NAME}
     WIN32
     "${SRC}" 
@@ -124,5 +128,5 @@ elseif (WIN32)
 
     target_compile_definitions(${PROJECT_NAME} PRIVATE "_CRT_SECURE_NO_WARNINGS")
     target_compile_options(${PROJECT_NAME} PRIVATE "/W4")
-    target_link_options(${PROJECT_NAME} PRIVATE "/SUBSYSTEM:Windows;/ENTRY:mainCRTStartup")
+    target_link_options(${PROJECT_NAME} PRIVATE "/SUBSYSTEM:Console;/ENTRY:mainCRTStartup")
 endif()
