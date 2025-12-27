@@ -3,9 +3,11 @@
 #include <iostream>
 #include <filesystem>
 #include <memory>
+#include <algorithm>
 
 #include "utils/Button.hpp"
 #include "utils/Filesystem.hpp"
+#include "utils/Math.hpp"
 
 #include "core/Infantry.hpp"
 
@@ -60,7 +62,7 @@ Game::Game()
     
     background = LoadTexture(FileSystem::getPath("res/background.png").c_str());
 
-    entities.push_back(new Infantry({100, 200}, 0));
+    entities.push_back(new Infantry({100, 200}, 0, {600,200}));
     entities.push_back(new Infantry({500, 200}, 1));
     
     lastReceived = "";
@@ -97,11 +99,12 @@ void Game::run()
     Button player2Button{FileSystem::getPath("res/player2.png").c_str(), {300, 300}, 1.1};
 
     Vector2 posA = {100,200};
+    dt = 0.f;
 
     // Main game loop
     while (!WindowShouldClose() && running)    // Detect window close button or ESC key
     {
-        float dt = GetFrameTime();              // delta time that passes between the loop cycles
+        dt = GetFrameTime();              // delta time that passes between the loop cycles
         mousePoint = GetMousePosition();        // current mouse pos
 
         bool mousePressed = IsMouseButtonPressed(MOUSE_LEFT_BUTTON);
@@ -134,29 +137,8 @@ void Game::run()
             if (IsKeyDown(KEY_S))
                 posA.y += speed * dt;
 
+			update();           // update game state; entities
 
-            entities[0]->setPosition(Vector2{ posA.x,posA.y });
-
-
-            // player updates
-            for (auto& entity : entities)
-            {
-				if (entity->getHealth() <= 0)
-					entities.erase(std::remove(entities.begin(), entities.end(), entity), entities.end());
-
-                bool shotsfired = false;
-                if (entity->canAttack())
-                {
-                    auto* ent = entity->bestEnt(entities);
-                    if (ent != nullptr)
-                    {
-                        ent->setHealth(ent->getHealth() - entity->getDamage());
-                        shotsfired = true;
-                    }
-                }
-                printf("%f\n", entity->getHealth());
-                entity->update(dt, shotsfired);
-            }
         }
 
         // Poll network events
@@ -184,24 +166,12 @@ void Game::run()
             {
                 entity->draw(!runAsServer);
 				
-                if (entity->getCollidorType() == ColliderType::Circle) {
-                    DrawCircleLines(
-                        entity->getPosition().x,
-                        entity->getPosition().y,
-                        entity->getCircleCollider().radius,
-                        BLACK
-                    );
-                }
-
-                if (entity->getCollidorType() == ColliderType::Rect) {
-                    DrawRectangleLines(
-                        entity->getPosition().x - entity->getRectCollider().halfSize.x,
-                        entity->getPosition().y - entity->getRectCollider().halfSize.y,
-                        entity->getRectCollider().halfSize.x * 2,
-                        entity->getRectCollider().halfSize.y * 2,
-                        BLUE
-                    );
-                }
+            	DrawCircleLines(
+            	entity->getPosition().x,
+            	entity->getPosition().y,
+            	entity->getCircleCollider().radius,
+            	BLACK
+            	);
             }  
         }
 
@@ -209,13 +179,83 @@ void Game::run()
     }
 }
 
-void Game::destroyEntity(int id)
+void Game::update()
 {
-    entities.erase(
-        std::remove_if(entities.begin(), entities.end(),
-            [id](Entity* e) {
-                return e->getID() == id;
-            }),
-        entities.end()
-    );
+    // player updates
+    for (auto& entity : entities)
+    {
+        if (entity->getHealth() <= 0)
+        {
+            destroyEntityPtr(entity);
+			continue;
+        }
+
+        bool shotsfired = false;
+        if (entity->canAttack())
+        {
+            auto* ent = entity->bestEnt(entities);
+            if (ent != nullptr)
+            {
+                ent->setHealth(ent->getHealth() - entity->getDamage());
+                shotsfired = true;
+            }
+        }
+		printf("shoots: %s\n", shotsfired ? "true" : "false");
+        entity->update(dt, shotsfired);
+    }
+
+	// resolve movement collisions between entities
+    resolveCollisions();
+}
+
+bool Game::resolveCollisions()
+{
+    for (size_t i = 0; i < entities.size(); i++)
+    {
+        Entity* a = entities[i];
+
+        for (size_t j = i + 1; j < entities.size(); j++)
+        {
+            Entity* b = entities[j];
+
+            Vector2 delta = Vector2Subtract(a->getPosition(), b->getPosition());
+            float dist = Vector2Length(delta);
+            float minDist = a->getCircleCollider().radius + b->getCircleCollider().radius;
+
+            if (dist >= minDist || dist == 0.0f)
+                return false;
+
+
+            float penetration = minDist - dist;
+			penetration = max(0.0f, penetration);
+            Vector2 normal = Vector2Scale(delta, 1.0f / dist);
+
+            a->setPosition(Vector2Add(a->getPosition(), Vector2Scale(normal, penetration * 0.5f)));
+            b->setPosition(Vector2Subtract(b->getPosition(), Vector2Scale(normal, penetration * 0.5f)));
+        }
+    }
+
+    return true;
+}
+
+void Game::destroyEntityPtr(Entity* entity)
+{
+    auto ent = std::find(entities.begin(), entities.end(), entity);
+    if (ent != entities.end()) {
+        delete* ent;
+        entities.erase(ent);
+    }
+}
+
+void Game::destroyEntityID(int id)
+{
+    auto it = std::find_if(entities.begin(), entities.end(),
+        [id](Entity* e) {
+            return e && e->getID() == id;
+        });
+
+    if (it != entities.end()) {
+        delete* it;               // delete the object
+        entities.erase(it);       // remove pointer from vector
+    }
 }

@@ -35,7 +35,10 @@ private:
     Texture2D background;
 
     // Entities
-    std::vector<Entity*> entities; // for troops only.
+    std::vector<Entity*> entities;
+
+    // game variables
+	float dt;                       // delta time between frames
 
 public: 
     Game();
@@ -45,5 +48,10 @@ public:
 
 private:
     void startNetworking();
-    void destroyEntity(int id);
+
+    void update();
+    bool resolveCollisions();
+
+    void destroyEntityPtr(Entity* entity);
+    void destroyEntityID(int id);
 };

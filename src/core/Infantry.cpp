@@ -7,10 +7,14 @@
 #include "../utils/ViewTransform.hpp"
 #include "../utils/Math.hpp"
 
-Infantry::Infantry(Vector2 pos, int team) : Entity(pos, team)
+Infantry::Infantry(Vector2 pos, int team, Vector2 desiredPos) : Entity(pos, team)
 {
     position = pos;
     this->team = team;
+
+    isShooting = false;
+
+	desiredPosition = desiredPos;
 
     health = maxHealth; // 100.f
 	cooldownTimer = attackCooldown; // ready to attack
@@ -23,9 +27,7 @@ Infantry::Infantry(Vector2 pos, int team) : Entity(pos, team)
         throw std::runtime_error("Invalid team for Infantry entity");
 
     // set collider
-    colliderType = ColliderType::Circle;
-    circle.radius = 40.0f;
-    
+    circle.radius = 20.f;
 }
 
 Infantry::~Infantry()
@@ -46,10 +48,29 @@ void Infantry::update(float dt, bool shotsFired)
         cooldownTimer = 0.f;
 
     cooldownTimer += dt;
+
+    if (!isShooting)
+		isShooting = shotsFired;
+
+	printf("health: %.2f\n", health);
+
+    if (!isShooting)                // only move player if no shots fired; cannot move and shoot at the same time
+    {
+        position += computeMovement(dt);
+    }
 }
 
 void Infantry::draw(bool inverted)
 {
+    // draw the infantry texture based on health
+    //
+    // health // 10 = texture number
+    // 10 textures based on health -> number of soldiers per texture changes
+	// 2 textures for health = 100, for healthy and injured
+    //
+
+    int textureNumber = static_cast<int>(round(health / 10.f));
+
     // if it is drawn from the client side, the texture will always be drawn inverted on the other side, no matter what team it belongs to
     if (inverted)
     {
@@ -61,6 +82,16 @@ void Infantry::draw(bool inverted)
         // server = world coordinates
         DrawEntityTexture(texture, position, { (float)texture.width, (float)texture.height }, team == 1, 0.05f); // flipped if other player
     }
+}
+
+Vector2 Infantry::computeMovement(float dt)
+{
+    if (desiredPosition == Vector2{-1,-1})
+		return { 0.f, 0.f };
+
+    Vector2 direction = Vector2Normalize(desiredPosition - position);
+
+    return Vector2Scale(direction, speed * dt);
 }
 
 Entity* Infantry::bestEnt(std::vector<Entity*> entities)

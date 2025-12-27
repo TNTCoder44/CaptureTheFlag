@@ -4,19 +4,9 @@
 
 #include "raylib.h"
 
-enum class ColliderType {
-    Circle,
-    Rect
-};
-
 struct CircleCollider {
     float radius;
 };
-
-struct RectCollider {
-    Vector2 halfSize;
-};
-
 
 class Entity
 {
@@ -28,34 +18,37 @@ private:
     float health;
     int id;
 
-    ColliderType colliderType;
+    Vector2 desiredPosition;
+
     CircleCollider circle;
-    RectCollider rect;
+
+public:
+    bool isShooting;
 
 public:
     Entity(Vector2 pos, int team) : position(pos), team(team) {}
     virtual ~Entity() {}
 
     virtual int getID() const { return id; }
-    virtual void setID(int newId) { id = newId; }
+    virtual void setID(int newId) = 0;
 
-    virtual void setPosition(Vector2 pos) { position = pos; }
+    virtual void setPosition(Vector2 pos) = 0;
     virtual Vector2 getPosition() const { return position; } // get world position
     virtual int getTeam() const { return team; }
     virtual void setHealth(float hp) { health = hp;
 	    health = std::max<float>(health, 0);
     }
 	virtual float getHealth() const { return health; }
-    virtual ColliderType getCollidorType() const { return colliderType; }
     virtual CircleCollider getCircleCollider() const { return circle; }
-    virtual RectCollider getRectCollider() const { return rect; }
 
     virtual bool canAttack() const = 0;
     virtual float getAttackRange() const = 0;
 	virtual float getDamage() const = 0;
+    virtual bool getShooting() const = 0;
 
 	virtual void update(float dt, bool sf) {}   // update ability to attack based on if shots fired
     virtual void draw(bool inverted) {}
+    virtual Vector2 computeMovement(float dt) = 0;
 
     virtual Entity* bestEnt(std::vector<Entity*> entities) = 0;
 };

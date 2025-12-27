@@ -12,18 +12,21 @@ private:
 
     const float attackCooldown = 2.f; // seconds
     const float maxHealth = 100.f;
-    const float attackRange = 40.0f;
+	float attackRange = 40.0f;
     const float damage = 10.0f;     // 10 dmg / s
+	const float speed = 40.f;        // units per second
 
     float health;
     int id;
 
-    ColliderType colliderType;
+    Vector2 desiredPosition;
+
     CircleCollider circle;
-    RectCollider rect;
+
+	bool isShooting;
 
 public:
-    Infantry(Vector2 pos, int team);
+    Infantry(Vector2 pos, int team, Vector2 desiredPos = { -1.f,-1.f });
     ~Infantry() override;
 
     int getID() const override { return id; }
@@ -40,12 +43,12 @@ public:
 	void setPosition(Vector2 pos) override{ position = pos; }
 	Vector2 getPosition() const override { return position; }
     int getTeam() const override { return team; }
-    ColliderType getCollidorType() const override { return colliderType; }
     CircleCollider getCircleCollider() const override { return circle; }
-    RectCollider getRectCollider() const override { return rect; }
+	bool getShooting() const { return isShooting; }
 
     void update(float dt, bool shotsFired) override;
     void draw(bool inverted) override;
+    Vector2 computeMovement(float dt) override;
 
 	Entity* bestEnt(std::vector<Entity*> entities) override;
 };
