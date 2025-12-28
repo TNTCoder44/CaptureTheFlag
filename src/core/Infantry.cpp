@@ -86,6 +86,7 @@ void Infantry::draw(bool inverted)
     //
     Texture2D texture;
 
+    // adjust texture based on health
     if (health == 100.f)
     {
         texture = textureFull;

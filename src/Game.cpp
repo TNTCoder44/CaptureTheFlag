@@ -129,7 +129,11 @@ void Game::run()
         {
             if (IsKeyDown(KEY_A) && !ss)
             {
-                entities.push_back(new Infantry({400, 600}, runAsServer ? 0 : 1, {100, 100}));
+                if (runAsServer)
+                    entities.push_back(new Infantry(startPosPlayer1, 0, {100, 100}));
+                else
+                    entities.push_back(new Infantry(startPosPlayer2, 1, {100, 100}));
+
                 PacketData pkt{};
                 pkt.type = TroopType::Infantry;
                 pkt.desiredPos[0] = 100;
@@ -161,7 +165,7 @@ void Game::run()
                 {
                 case TroopType::Infantry:
                 {
-                    Vector2 spawnPos = (runAsServer) ? startPosPlayer1 : startPosPlayer2;
+                    Vector2 spawnPos = (runAsServer) ? startPosPlayer2 : startPosPlayer1;
                     entities.push_back(new Infantry(spawnPos, runAsServer ? 1 : 0, Vector2{(float)pkt.desiredPos[0], (float)pkt.desiredPos[1]}));
                     break;
                 }
