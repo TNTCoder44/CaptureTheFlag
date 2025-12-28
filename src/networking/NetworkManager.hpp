@@ -27,16 +27,16 @@ public:
     bool startServer(enet_uint16 port);
     bool startClient(const std::string& host, enet_uint16 port);
 
-    inline void send(const std::string& message) {
+    inline void send(void* packet) {
         if (isServer) {
-            SendToClient(message);
+            SendToClient(packet);
         } else {
-            SendToServer(message);
+            SendToServer(packet);
         }
     }
 
-    // Poll for received messages
-    std::optional<std::string> pollEvent();
+    // Poll for received packets
+    std::optional<void*> pollEvent();
 
     // Shutdown network
     void shutdown();
@@ -46,14 +46,14 @@ private:
     ENetPeer* peer;
     bool isServer;
 
-    std::queue<std::string> messageQueue;
+    std::queue<void*> packetQueue;
     std::mutex queueMutex;
 
-    // Send messages
-    void SendToServer(const std::string& message);
-    void SendToClient(const std::string& message); // only server
+    // Send packets
+    void SendToServer(void* packet);
+    void SendToClient(void* packet);
 
-    void PushMessage(const std::string& message);
+    void PushPacket(void* packet);
 };
 
 inline void BroadcastServer(std::atomic<bool>& running, uint16_t broadcastPort = 12345) {

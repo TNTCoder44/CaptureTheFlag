@@ -40,6 +40,9 @@ private:
     // game variables
 	float dt;                       // delta time between frames
 
+    Vector2 startPosPlayer1 = {400, 700}; // team 0
+    Vector2 startPosPlayer2 = {400, 100}; // team 1
+
 public: 
     Game();
     ~Game();

@@ -6,15 +6,18 @@ class Infantry : public Entity
 private:
     Texture2D textureFull;
     Texture2D textureInjured;
+    Texture2D textureInjured2;
     Vector2 position;
 
     int team;
     float cooldownTimer;
 
-    const float attackCooldown = 2.f; // seconds
+    const float attackCooldown = 1.f; // seconds
     const float maxHealth = 100.f;
 	float attackRange = 40.0f;
     const float damage = 10.0f;     // 10 dmg / s
+    const int soldierSize = 12;    // size of each soldier in pixels
+    const int maxSoldiers = 7;   // maximum number of soldiers in the infantry unit
 	
     float speed = 40.f;        // units per second
     float spacing;
@@ -45,6 +48,7 @@ public:
         health = hp;
         health = std::max<float>(health, 0);
 
+        soldiersAlive = static_cast<int>(floor(float(health / (maxHealth / maxSoldiers))));
         rebuildFormation();
     }
 	float getHealth() const override { return health; }

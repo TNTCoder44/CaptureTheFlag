@@ -53,24 +53,24 @@ bool NetworkManager::startClient(const std::string& hostIP, enet_uint16 port) {
     return true;
 }
 
-void NetworkManager::SendToServer(const std::string& message) {
+void NetworkManager::SendToServer(void* packetData) {
     if (!peer) return;
 
-    ENetPacket* packet = enet_packet_create(message.c_str(),
-                                            message.size() + 1,
+    ENetPacket* packet = enet_packet_create(packetData,
+                                            sizeof(packetData),
                                             ENET_PACKET_FLAG_RELIABLE);
     enet_peer_send(peer, 0, packet);
     enet_host_flush(host);
 }
 
-void NetworkManager::SendToClient(const std::string& message) {
+void NetworkManager::SendToClient(void* packetData) {
     if (!isServer || !host) return;
 
     for (size_t i = 0; i < host->peerCount; ++i) {
         ENetPeer* clientPeer = &host->peers[i];
         if (clientPeer->state == ENET_PEER_STATE_CONNECTED) {
-            ENetPacket* packet = enet_packet_create(message.c_str(),
-                                                    message.size() + 1,
+            ENetPacket* packet = enet_packet_create(packetData,
+                                                    sizeof(packetData),
                                                     ENET_PACKET_FLAG_RELIABLE);
             enet_peer_send(clientPeer, 0, packet);
         }
@@ -78,7 +78,7 @@ void NetworkManager::SendToClient(const std::string& message) {
     enet_host_flush(host);
 }
 
-std::optional<std::string> NetworkManager::pollEvent() {
+std::optional<void*> NetworkManager::pollEvent() {
     if (!host) return std::nullopt;
 
     ENetEvent event;
@@ -89,7 +89,7 @@ std::optional<std::string> NetworkManager::pollEvent() {
             if (!isServer) peer = event.peer;
             break;
         case ENET_EVENT_TYPE_RECEIVE:
-            PushMessage(reinterpret_cast<char*>(event.packet->data));
+            PushPacket(event.packet->data);
             enet_packet_destroy(event.packet);
             break;
         case ENET_EVENT_TYPE_DISCONNECT:
@@ -101,17 +101,17 @@ std::optional<std::string> NetworkManager::pollEvent() {
     }
 
     std::lock_guard<std::mutex> lock(queueMutex);
-    if (!messageQueue.empty()) {
-        std::string msg = messageQueue.front();
-        messageQueue.pop();
-        return msg;
+    if (!packetQueue.empty()) {
+        void* packet = packetQueue.front();
+        packetQueue.pop();
+        return packet;
     }
     return std::nullopt;
 }
 
-void NetworkManager::PushMessage(const std::string& message) {
+void NetworkManager::PushPacket(void* packet) {
     std::lock_guard<std::mutex> lock(queueMutex);
-    messageQueue.push(message);
+    packetQueue.push(packet);
 }
 
 void NetworkManager::shutdown() {
