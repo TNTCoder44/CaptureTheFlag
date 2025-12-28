@@ -57,8 +57,8 @@ Game::Game()
 
     background = LoadTexture(FileSystem::getPath("res/background.png").c_str());
 
-    //entities.push_back(new Infantry({400, 600}, 0, {400, 200}));
-    //entities.push_back(new Infantry({400, 200}, 1, {400, 600}));
+    // entities.push_back(new Infantry({400, 600}, 0, {400, 200}));
+    // entities.push_back(new Infantry({400, 200}, 1, {400, 600}));
 
     lastReceived = "";
 
@@ -125,19 +125,20 @@ void Game::run()
                 beginGame = false;
             }
         }
-        else
+        else // main game loop
         {
-            if (IsKeyDown(KEY_A) && !ss)   
+            if (IsKeyDown(KEY_A) && !ss)
             {
                 entities.push_back(new Infantry({400, 600}, runAsServer ? 0 : 1, {100, 100}));
-                PacketData pkt;
+                PacketData pkt{};
                 pkt.type = TroopType::Infantry;
-                pkt.desiredPosition = {100, 100};
-                network.send(&pkt);
+                pkt.desiredPos[0] = 100;
+                pkt.desiredPos[1] = 100;
+
+                network.send(pkt);
 
                 ss = true;
             }
-            
 
             update(); // update game state; entities
         }
@@ -148,29 +149,34 @@ void Game::run()
             auto packet = network.pollEvent();
             if (packet.has_value())
             {
-                PacketData pkt = reinterpret_cast<PacketData&>(packet.value());
-                // process packet
+                if (packet->size() < sizeof(PacketData))
+                    continue;
 
-                switch(pkt.type)
+                PacketData pkt{};
+                std::memcpy(&pkt, packet->data(), sizeof(PacketData));
+
+                printf("Received packet of type %d\n", static_cast<int>(pkt.type));
+                // process packet
+                switch (pkt.type)
                 {
-                    case TroopType::Infantry:
-                    {
-                        Vector2 spawnPos = (runAsServer) ? startPosPlayer1 : startPosPlayer2;
-                        entities.push_back(new Infantry(spawnPos, runAsServer ? 0 : 1, pkt.desiredPosition));
-                        break;
-                    }
-                    case TroopType::Cavallry:
-                    {
-                        // handle cavallry spawn
-                        break;
-                    }
-                    case TroopType::Artillery:
-                    {
-                        // handle artillery spawn
-                        break;
-                    }
-                    default:
-                        break;
+                case TroopType::Infantry:
+                {
+                    Vector2 spawnPos = (runAsServer) ? startPosPlayer1 : startPosPlayer2;
+                    entities.push_back(new Infantry(spawnPos, runAsServer ? 1 : 0, Vector2{(float)pkt.desiredPos[0], (float)pkt.desiredPos[1]}));
+                    break;
+                }
+                case TroopType::Cavallry:
+                {
+                    // handle cavallry spawn
+                    break;
+                }
+                case TroopType::Artillery:
+                {
+                    // handle artillery spawn
+                    break;
+                }
+                default:
+                    break;
                 }
             }
         }
@@ -207,8 +213,8 @@ void Game::run()
 
 void Game::update()
 {
-    std::unordered_map<Entity*, float> pendingDamage;
-    std::unordered_set<Entity*> shooters;
+    std::unordered_map<Entity *, float> pendingDamage;
+    std::unordered_set<Entity *> shooters;
 
     // get all attacks this frame
     for (Entity *attacker : entities)

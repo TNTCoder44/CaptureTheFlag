@@ -3,6 +3,8 @@
 #include <optional>
 #include <queue>
 #include <mutex>
+#include <vector>
+#include <cstddef>
 #include <enet/enet.h>
 #include <iostream>
 #include <thread>
@@ -17,66 +19,73 @@
 #include <unistd.h>
 #endif
 
-
-class NetworkManager {
+class NetworkManager
+{
 public:
     NetworkManager();
     ~NetworkManager();
 
     // Server/Client startup
     bool startServer(enet_uint16 port);
-    bool startClient(const std::string& host, enet_uint16 port);
+    bool startClient(const std::string &host, enet_uint16 port);
 
-    inline void send(void* packet) {
-        if (isServer) {
-            SendToClient(packet);
-        } else {
-            SendToServer(packet);
-        }
+   
+    template <typename T>
+    void send(const T &packet, enet_uint8 channel = 0, enet_uint32 flags = ENET_PACKET_FLAG_RELIABLE)
+    {
+        send(&packet, sizeof(T), channel, flags);
     }
 
     // Poll for received packets
-    std::optional<void*> pollEvent();
+    std::optional<std::vector<uint8_t>> pollEvent();
 
     // Shutdown network
     void shutdown();
 
 private:
-    ENetHost* host;
-    ENetPeer* peer;
+    ENetHost *host;
+    ENetPeer *peer;
     bool isServer;
 
-    std::queue<void*> packetQueue;
+    std::queue<std::vector<uint8_t>> packetQueue;
     std::mutex queueMutex;
 
     // Send packets
-    void SendToServer(void* packet);
-    void SendToClient(void* packet);
+    void send(const void *data, size_t size, enet_uint8 channel = 0, enet_uint32 flags = ENET_PACKET_FLAG_RELIABLE);
 
-    void PushPacket(void* packet);
+    void SendToServer(const void *data, size_t size, enet_uint8 channel, enet_uint32 flags);
+    void SendToClient(const void *data, size_t size, enet_uint8 channel, enet_uint32 flags);
+
+    void PushPacket(const void *data, size_t size);
 };
 
-inline void BroadcastServer(std::atomic<bool>& running, uint16_t broadcastPort = 12345) {
+inline void BroadcastServer(std::atomic<bool> &running, uint16_t broadcastPort = 12345)
+{
 #ifdef _WIN32
     WSADATA wsaData;
-    WSAStartup(MAKEWORD(2,2), &wsaData);
+    WSAStartup(MAKEWORD(2, 2), &wsaData);
 #endif
 
     int sock = socket(AF_INET, SOCK_DGRAM, 0);
-    if (sock < 0) { std::cerr << "Socket creation failed!\n"; return; }
+    if (sock < 0)
+    {
+        std::cerr << "Socket creation failed!\n";
+        return;
+    }
 
     int broadcastEnable = 1;
-    setsockopt(sock, SOL_SOCKET, SO_BROADCAST, (char*)&broadcastEnable, sizeof(broadcastEnable));
+    setsockopt(sock, SOL_SOCKET, SO_BROADCAST, (char *)&broadcastEnable, sizeof(broadcastEnable));
 
     sockaddr_in broadcastAddr{};
     broadcastAddr.sin_family = AF_INET;
     broadcastAddr.sin_port = htons(broadcastPort);
     broadcastAddr.sin_addr.s_addr = inet_addr("255.255.255.255");
 
-    const char* message = "PLAYER1_HERE";
+    const char *message = "PLAYER1_HERE";
 
-    while (running) {
-        sendto(sock, message, strlen(message), 0, (sockaddr*)&broadcastAddr, sizeof(broadcastAddr));
+    while (running)
+    {
+        sendto(sock, message, strlen(message), 0, (sockaddr *)&broadcastAddr, sizeof(broadcastAddr));
         std::this_thread::sleep_for(std::chrono::seconds(1)); // broadcast every second
     }
 
@@ -88,22 +97,29 @@ inline void BroadcastServer(std::atomic<bool>& running, uint16_t broadcastPort =
 #endif
 }
 
-inline std::string DiscoverServer(uint16_t broadcastPort = 12345, int timeoutSeconds = 5) {
+inline std::string DiscoverServer(uint16_t broadcastPort = 12345, int timeoutSeconds = 5)
+{
 #ifdef _WIN32
     WSADATA wsaData;
-    WSAStartup(MAKEWORD(2,2), &wsaData);
+    WSAStartup(MAKEWORD(2, 2), &wsaData);
 #endif
 
     int sock = socket(AF_INET, SOCK_DGRAM, 0);
-    if (sock < 0) { std::cerr << "Socket creation failed!\n"; return ""; }
+    if (sock < 0)
+    {
+        std::cerr << "Socket creation failed!\n";
+        return "";
+    }
 
     sockaddr_in listenAddr{};
     listenAddr.sin_family = AF_INET;
     listenAddr.sin_port = htons(broadcastPort);
     listenAddr.sin_addr.s_addr = INADDR_ANY;
 
-    if (bind(sock, (sockaddr*)&listenAddr, sizeof(listenAddr)) < 0) {
-        std::cerr << "Bind failed!\n"; return "";
+    if (bind(sock, (sockaddr *)&listenAddr, sizeof(listenAddr)) < 0)
+    {
+        std::cerr << "Bind failed!\n";
+        return "";
     }
 
     fd_set readfds;
@@ -122,12 +138,15 @@ inline std::string DiscoverServer(uint16_t broadcastPort = 12345, int timeoutSec
     FD_ZERO(&readfds);
     FD_SET(sock, &readfds);
 
-    int ret = select(sock+1, &readfds, nullptr, nullptr, &tv);
-    if (ret > 0 && FD_ISSET(sock, &readfds)) {
-        int bytes = recvfrom(sock, buffer, sizeof(buffer)-1, 0, (sockaddr*)&senderAddr, &addrLen);
-        if (bytes > 0) {
+    int ret = select(sock + 1, &readfds, nullptr, nullptr, &tv);
+    if (ret > 0 && FD_ISSET(sock, &readfds))
+    {
+        int bytes = recvfrom(sock, buffer, sizeof(buffer) - 1, 0, (sockaddr *)&senderAddr, &addrLen);
+        if (bytes > 0)
+        {
             buffer[bytes] = 0;
-            if (strcmp(buffer, "PLAYER1_HERE") == 0) {
+            if (strcmp(buffer, "PLAYER1_HERE") == 0)
+            {
                 std::string serverIP = inet_ntoa(senderAddr.sin_addr);
 #ifdef _WIN32
                 closesocket(sock);
@@ -149,4 +168,3 @@ inline std::string DiscoverServer(uint16_t broadcastPort = 12345, int timeoutSec
 
     return ""; // no server found
 }
-

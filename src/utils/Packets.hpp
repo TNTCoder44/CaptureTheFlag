@@ -18,7 +18,7 @@ enum class TroopType : uint8_t
 struct PacketData 
 {
     TroopType type;
-    Vector2 desiredPosition;
+    int desiredPos[2];
 };
 
 #pragma pack(pop)

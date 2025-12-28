@@ -5,23 +5,27 @@
 NetworkManager::NetworkManager()
     : host(nullptr), peer(nullptr), isServer(false)
 {
-    if (enet_initialize() != 0) {
+    if (enet_initialize() != 0)
+    {
         std::cerr << "ENet initialization failed!\n";
     }
 }
 
-NetworkManager::~NetworkManager() {
+NetworkManager::~NetworkManager()
+{
     shutdown();
     enet_deinitialize();
 }
 
-bool NetworkManager::startServer(enet_uint16 port) {
+bool NetworkManager::startServer(enet_uint16 port)
+{
     ENetAddress address;
     address.host = ENET_HOST_ANY;
     address.port = port;
 
     host = enet_host_create(&address, 32, 2, 0, 0); // max 32 clients, 2 channels
-    if (!host) {
+    if (!host)
+    {
         std::cerr << "Failed to create ENet server host!\n";
         return false;
     }
@@ -31,9 +35,11 @@ bool NetworkManager::startServer(enet_uint16 port) {
     return true;
 }
 
-bool NetworkManager::startClient(const std::string& hostIP, enet_uint16 port) {
+bool NetworkManager::startClient(const std::string &hostIP, enet_uint16 port)
+{
     host = enet_host_create(nullptr, 1, 2, 0, 0); // client, 1 peer
-    if (!host) {
+    if (!host)
+    {
         std::cerr << "Failed to create ENet client host!\n";
         return false;
     }
@@ -43,7 +49,8 @@ bool NetworkManager::startClient(const std::string& hostIP, enet_uint16 port) {
     address.port = port;
 
     peer = enet_host_connect(host, &address, 2, 0);
-    if (!peer) {
+    if (!peer)
+    {
         std::cerr << "Failed to connect to server!\n";
         return false;
     }
@@ -53,43 +60,62 @@ bool NetworkManager::startClient(const std::string& hostIP, enet_uint16 port) {
     return true;
 }
 
-void NetworkManager::SendToServer(void* packetData) {
-    if (!peer) return;
+void NetworkManager::send(const void *data, size_t size, enet_uint8 channel, enet_uint32 flags)
+{
+    if (!data || size == 0)
+        return;
 
-    ENetPacket* packet = enet_packet_create(packetData,
-                                            sizeof(packetData),
-                                            ENET_PACKET_FLAG_RELIABLE);
-    enet_peer_send(peer, 0, packet);
+    if (isServer)
+        SendToClient(data, size, channel, flags);
+    else
+        SendToServer(data, size, channel, flags);
+}
+
+void NetworkManager::SendToServer(const void *data, size_t size, enet_uint8 channel, enet_uint32 flags)
+{
+    if (!peer || !host)
+        return;
+
+    ENetPacket *packet = enet_packet_create(data, size, flags);
+    enet_peer_send(peer, channel, packet);
     enet_host_flush(host);
 }
 
-void NetworkManager::SendToClient(void* packetData) {
-    if (!isServer || !host) return;
+void NetworkManager::SendToClient(const void *data, size_t size, enet_uint8 channel, enet_uint32 flags)
+{
+    if (!isServer || !host)
+        return;
 
-    for (size_t i = 0; i < host->peerCount; ++i) {
-        ENetPeer* clientPeer = &host->peers[i];
-        if (clientPeer->state == ENET_PEER_STATE_CONNECTED) {
-            ENetPacket* packet = enet_packet_create(packetData,
-                                                    sizeof(packetData),
-                                                    ENET_PACKET_FLAG_RELIABLE);
-            enet_peer_send(clientPeer, 0, packet);
+    for (size_t i = 0; i < host->peerCount; ++i)
+    {
+        ENetPeer *clientPeer = &host->peers[i];
+        if (clientPeer->state == ENET_PEER_STATE_CONNECTED)
+        {
+            ENetPacket *packet = enet_packet_create(data, size, flags);
+            enet_peer_send(clientPeer, channel, packet);
         }
     }
     enet_host_flush(host);
 }
 
-std::optional<void*> NetworkManager::pollEvent() {
-    if (!host) return std::nullopt;
+std::optional<std::vector<uint8_t>> NetworkManager::pollEvent()
+{
+    if (!host)
+        return std::nullopt;
 
     ENetEvent event;
-    while (enet_host_service(host, &event, 0) > 0) {
-        switch (event.type) {
+    while (enet_host_service(host, &event, 0) > 0)
+    {
+        switch (event.type)
+        {
         case ENET_EVENT_TYPE_CONNECT:
             std::cout << (isServer ? "Client connected!" : "Connected to server!") << "\n";
-            if (!isServer) peer = event.peer;
+            if (!isServer)
+                peer = event.peer;
             break;
         case ENET_EVENT_TYPE_RECEIVE:
-            PushPacket(event.packet->data);
+            // Copy the bytes before destroying the ENetPacket.
+            PushPacket(event.packet->data, event.packet->dataLength);
             enet_packet_destroy(event.packet);
             break;
         case ENET_EVENT_TYPE_DISCONNECT:
@@ -101,21 +127,26 @@ std::optional<void*> NetworkManager::pollEvent() {
     }
 
     std::lock_guard<std::mutex> lock(queueMutex);
-    if (!packetQueue.empty()) {
-        void* packet = packetQueue.front();
+    if (!packetQueue.empty())
+    {
+        std::vector<uint8_t> packet = std::move(packetQueue.front());
         packetQueue.pop();
         return packet;
     }
     return std::nullopt;
 }
 
-void NetworkManager::PushPacket(void* packet) {
+void NetworkManager::PushPacket(const void *data, size_t size)
+{
     std::lock_guard<std::mutex> lock(queueMutex);
-    packetQueue.push(packet);
+    const uint8_t *bytes = static_cast<const uint8_t *>(data);
+    packetQueue.emplace(bytes, bytes + size);
 }
 
-void NetworkManager::shutdown() {
-    if (host) {
+void NetworkManager::shutdown()
+{
+    if (host)
+    {
         enet_host_destroy(host);
         host = nullptr;
         peer = nullptr;
