@@ -5,6 +5,8 @@
 
 #include "root_directory.h"
 
+#include <filesystem>
+
 class FileSystem
 {
 private:
@@ -28,9 +30,15 @@ private:
     
     static Builder getPathBuilder()
     {
-        if (getRoot() != "")
-        return &FileSystem::getPathRelativeRoot;
-        else
+        // check if getRelativeRoot is valid
+        auto root = getRoot();
+        
+
+        if (root != "")
+        {
+            if (std::filesystem::is_directory(root))
+                return &FileSystem::getPathRelativeRoot;
+        }
         return &FileSystem::getPathRelativeBinary;
     }
 
@@ -41,6 +49,10 @@ private:
 
     static std::string getPathRelativeBinary(const std::string& path)
     {
-        return "../" + path;
+        #ifdef __APPLE__
+            return "../" + path;
+        #else
+            return "./" + path;
+        #endif
     }
 };

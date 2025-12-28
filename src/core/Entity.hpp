@@ -48,7 +48,9 @@ public:
 
 	virtual void update(float dt, bool sf) {}   // update ability to attack based on if shots fired
     virtual void draw(bool inverted) {}
-    virtual Vector2 computeMovement(float dt) = 0;
 
-    virtual Entity* bestEnt(std::vector<Entity*> entities) = 0;
+    virtual Entity* bestEnt(const std::vector<Entity*>& entities) = 0;
+
+private:
+    virtual Vector2 computeMovement(float dt) = 0;
 };

@@ -4,7 +4,8 @@
 class Infantry : public Entity
 {
 private:
-    Texture2D texture;
+    Texture2D textureFull;
+    Texture2D textureInjured;
     Vector2 position;
 
     int team;
@@ -14,7 +15,12 @@ private:
     const float maxHealth = 100.f;
 	float attackRange = 40.0f;
     const float damage = 10.0f;     // 10 dmg / s
-	const float speed = 40.f;        // units per second
+	
+    float speed = 40.f;        // units per second
+    float spacing;
+
+    std::vector<Vector2> formationOffsets;
+    int soldiersAlive;
 
     float health;
     int id;
@@ -38,17 +44,24 @@ public:
 	void setHealth(float hp) override {
         health = hp;
         health = std::max<float>(health, 0);
+
+        rebuildFormation();
     }
 	float getHealth() const override { return health; }
 	void setPosition(Vector2 pos) override{ position = pos; }
 	Vector2 getPosition() const override { return position; }
     int getTeam() const override { return team; }
     CircleCollider getCircleCollider() const override { return circle; }
-	bool getShooting() const { return isShooting; }
+	bool getShooting() const override { return isShooting; }
 
     void update(float dt, bool shotsFired) override;
     void draw(bool inverted) override;
-    Vector2 computeMovement(float dt) override;
+    
 
-	Entity* bestEnt(std::vector<Entity*> entities) override;
+	Entity* bestEnt(const std::vector<Entity*>& entities) override;
+
+private:
+    Vector2 computeMovement(float dt) override;
+    std::vector<Vector2> generateCircleFormation();
+    void rebuildFormation();
 };

@@ -227,7 +227,6 @@ bool Game::resolveCollisions()
 
 
             float penetration = minDist - dist;
-			penetration = max(0.0f, penetration);
             Vector2 normal = Vector2Scale(delta, 1.0f / dist);
 
             a->setPosition(Vector2Add(a->getPosition(), Vector2Scale(normal, penetration * 0.5f)));
