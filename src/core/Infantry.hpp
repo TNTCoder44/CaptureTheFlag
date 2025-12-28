@@ -48,7 +48,7 @@ public:
         health = hp;
         health = std::max<float>(health, 0);
 
-        soldiersAlive = static_cast<int>(floor(float(health / (maxHealth / maxSoldiers))));
+        soldiersAlive = static_cast<int>(ceil(float(health / (maxHealth / maxSoldiers))));
         rebuildFormation();
     }
 	float getHealth() const override { return health; }

@@ -12,6 +12,7 @@ enum class TroopType : uint8_t
     Artillery = 2
 };
 
+// Ensure tight packing of the struct for comatibility
 #pragma pack(push, 1)
 
 struct PacketData 
