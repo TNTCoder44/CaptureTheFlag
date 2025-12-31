@@ -40,8 +40,11 @@ inline void DrawEntityTexture(
         (float)tex.height
     };
 
+
+    
+    inverted = true; // rip
     // flip the texture if needed
-    if (inverted) {
+    if (!inverted) {
         src.height *= -1;
         src.width *= -1;
     }

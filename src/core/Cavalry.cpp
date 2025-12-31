@@ -1,4 +1,4 @@
-#include "Infantry.hpp"
+#include "Cavalry.hpp"
 
 #include <iostream>
 #include <stdexcept>
@@ -7,35 +7,36 @@
 #include "../utils/ViewTransform.hpp"
 #include "../utils/Math.hpp"
 
-Infantry::Infantry(Vector2 pos, int team, Vector2 desiredPos) : Entity(pos, team)
+Cavalry::Cavalry(Vector2 pos, int team, Vector2 desiredPos) : Entity(pos, team)
 {
     position = pos;
     this->team = team;
 
     isShooting = false;
+    attackMove = true;
 
     desiredPosition = desiredPos;
 
     soldiersAlive = maxSoldiers; // initial number of soldiers
-    spacing = 75.f;     // spacing between soldiers in formation
+    spacing = 75.f;              // spacing between soldiers in formation
 
     health = maxHealth;             // 100.f
     cooldownTimer = attackCooldown; // ready to attack
 
     if (team == 0)
     {
-        textureFull = LoadTexture(FileSystem::getPath("res/infantry/blue_infantryFull.png").c_str());
-        textureInjured = LoadTexture(FileSystem::getPath("res/infantry/blue_infantryVer1.png").c_str());
-        textureInjured2 = LoadTexture(FileSystem::getPath("res/infantry/blue_infantryVer2.png").c_str());
+        textureFull = LoadTexture(FileSystem::getPath("res/cavalry/blue_cavalryFull.png").c_str());
+        textureInjured = LoadTexture(FileSystem::getPath("res/cavalry/blue_cavalryVer1.png").c_str());
+        textureInjured2 = LoadTexture(FileSystem::getPath("res/cavalry/blue_cavalryVer2.png").c_str());
     }
     else if (team == 1)
     {
-        textureFull = LoadTexture(FileSystem::getPath("res/infantry/red_infantryFull.png").c_str());
-        textureInjured = LoadTexture(FileSystem::getPath("res/infantry/red_infantryVer1.png").c_str());
-        textureInjured2 = LoadTexture(FileSystem::getPath("res/infantry/red_infantryVer2.png").c_str());
+        textureFull = LoadTexture(FileSystem::getPath("res/cavalry/red_cavalryFull.png").c_str());
+        textureInjured = LoadTexture(FileSystem::getPath("res/cavalry/red_cavalryVer1.png").c_str());
+        textureInjured2 = LoadTexture(FileSystem::getPath("res/cavalry/red_cavalryVer2.png").c_str());
     }
     else
-        throw std::runtime_error("Invalid team for Infantry entity");
+        throw std::runtime_error("Invalid team for Cavalry entity");
 
     // set collider
     circle.radius = 20.f;
@@ -43,21 +44,21 @@ Infantry::Infantry(Vector2 pos, int team, Vector2 desiredPos) : Entity(pos, team
     rebuildFormation();
 }
 
-Infantry::~Infantry()
+Cavalry::~Cavalry()
 {
     UnloadTexture(textureFull);
     UnloadTexture(textureInjured);
     UnloadTexture(textureInjured2);
 }
 
-bool Infantry::canAttack() const
+bool Cavalry::canAttack() const
 {
     if (cooldownTimer >= attackCooldown)
         return true;
     return false;
 }
 
-void Infantry::update(float dt, bool shotsFired)
+void Cavalry::update(float dt, bool shotsFired)
 {
     if (shotsFired)
         cooldownTimer = 0.f;
@@ -70,15 +71,15 @@ void Infantry::update(float dt, bool shotsFired)
     if (canAttack() && !shotsFired)
         isShooting = false;
 
-    if (!isShooting) // only move player if no shots fired; cannot move and shoot at the same time
-    {
+    
+    // compute movement always because cavalry can move while shooting
+    if (attackMove)
         position += computeMovement(dt);
-    }
 }
 
-void Infantry::draw(bool inverted)
+void Cavalry::draw(bool inverted)
 {
-    // draw the infantry texture based on health
+    // draw the Cavalry texture based on health
     //
     // health // 10 = soldiers alive
     // soldier texture -> number of soldiers per drawcall changes
@@ -116,7 +117,7 @@ void Infantry::draw(bool inverted)
     }
 }
 
-Vector2 Infantry::computeMovement(float dt)
+Vector2 Cavalry::computeMovement(float dt)
 {
     if (desiredPosition == Vector2{-1, -1})
         return {0.f, 0.f};
@@ -126,7 +127,7 @@ Vector2 Infantry::computeMovement(float dt)
     return Vector2Scale(direction, speed * dt);
 }
 
-std::vector<Vector2> Infantry::generateCircleFormation()
+std::vector<Vector2> Cavalry::generateCircleFormation()
 {
     int count = soldiersAlive;
 
@@ -167,7 +168,7 @@ std::vector<Vector2> Infantry::generateCircleFormation()
     return offsets;
 }
 
-void Infantry::rebuildFormation()
+void Cavalry::rebuildFormation()
 {
     formationOffsets = generateCircleFormation();
 
@@ -180,7 +181,7 @@ void Infantry::rebuildFormation()
     circle.radius = maxRadius + spacing * 0.5f;
 }
 
-Entity *Infantry::bestEnt(const std::vector<Entity *> &entities)
+Entity *Cavalry::bestEnt(const std::vector<Entity *> &entities)
 {
     float dist = 1000.f;
     Entity *bestEnt = (Entity *)nullptr;

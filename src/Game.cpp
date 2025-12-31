@@ -11,32 +11,142 @@
 #include "utils/Filesystem.hpp"
 #include "utils/Math.hpp"
 #include "utils/Packets.hpp"
+#include "utils/ViewTransform.hpp"
 
 #include "core/Infantry.hpp"
+#include "core/Cavalry.hpp"
+#include "core/Base.hpp"
+
+void Game::startNetworkThread()
+{
+    if (networkThreadRunning)
+        return;
+
+    networkThreadRunning = true;
+    networkThread = std::thread([this]()
+                                { networkThreadMain(); });
+}
+
+void Game::stopNetworkThread()
+{
+    networkThreadRunning = false;
+    if (networkThread.joinable())
+        networkThread.join();
+}
+
+void Game::sendPacket(const PacketData &pkt)
+{
+    std::lock_guard<std::mutex> lock(outgoingMutex);
+    outgoingPackets.push(pkt);
+}
+
+void Game::getPacketsIn()
+{
+    for (;;)
+    {
+        PacketData pkt{};
+        {
+            std::lock_guard<std::mutex> lock(incomingMutex);
+            if (incomingPackets.empty())
+                break;
+            pkt = incomingPackets.front();
+            incomingPackets.pop();
+        }
+
+        // process packet (game logic, no networking calls)
+        switch (pkt.type)
+        {
+        case TroopType::Infantry:
+        {
+            Vector2 spawnPos = (runAsServer) ? startPosPlayer2 : startPosPlayer1;
+            entities.push_back(new Infantry(spawnPos, runAsServer ? 1 : 0, Vector2{(float)pkt.desiredPos[0], (float)pkt.desiredPos[1]}));
+            break;
+        }
+        case TroopType::Cavallry:
+            break;
+        case TroopType::Artillery:
+            break;
+        default:
+            break;
+        }
+    }
+}
+
+void Game::networkThreadMain()
+{
+    bool connectAttemptStarted = false;
+
+    while (networkThreadRunning)
+    {
+        if (!runAsServer && !connectAttemptStarted)
+        {
+            std::string serverIP;
+            while (networkThreadRunning && serverIP.empty())
+            {
+                serverIP = DiscoverServer(12345, 1);
+            }
+
+            if (!serverIP.empty() && networkThreadRunning)
+            {
+                network.startClient(serverIP, 1234);
+                connectAttemptStarted = true;
+            }
+        }
+
+        // send outgoing packets
+        {
+            std::lock_guard<std::mutex> lock(outgoingMutex);
+            while (!outgoingPackets.empty())
+            {
+                PacketData pkt = outgoingPackets.front();
+                outgoingPackets.pop();
+                network.send(pkt);
+            }
+        }
+
+        // Poll enet events -> incoming packets
+        for (int i = 0; i < 5; i++)
+        {
+            auto packet = network.pollEvent();
+            if (!packet.has_value())
+                break;
+            if (packet->size() < sizeof(PacketData))
+                continue;
+
+            PacketData pkt{};
+            std::memcpy(&pkt, packet->data(), sizeof(PacketData));
+
+            {
+                std::lock_guard<std::mutex> lock(incomingMutex);
+                incomingPackets.push(pkt);
+            }
+        }
+
+        // update variable for main loop
+        clientConnected = network.isConnected();
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+}
 
 void Game::startNetworking()
 {
     if (runAsServer)
     {
         network.startServer(1234);
+        clientConnected = false;
         broadcastThread = std::thread([this]()
                                       {
                                           BroadcastServer(runThread); // second argument uses default
                                       });
         std::cout << "Server running, waiting for client...\n";
+        startNetworkThread();
     }
     else
     {
-    _again:
-        std::string serverIP = DiscoverServer();
-        if (serverIP.empty())
-        {
-            std::cout << "No server found on LAN.\n";
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
-            goto _again;
-        }
-        std::cout << "Found server at " << serverIP << "\n";
-        network.startClient(serverIP, 1234);
+        clientConnected = false;
+        std::cout << "Searching for server on LAN...\n";
+        startNetworkThread();
     }
 }
 
@@ -57,16 +167,24 @@ Game::Game()
 
     background = LoadTexture(FileSystem::getPath("res/background.png").c_str());
 
-    // entities.push_back(new Infantry({400, 600}, 0, {400, 200}));
-    // entities.push_back(new Infantry({400, 200}, 1, {400, 600}));
+    //entities.push_back(new Infantry({400, 600}, 0, {400, 200}));
+    entities.push_back(new Cavalry({400, 200}, 1, {400, 600}));
+
+    
+    // Base, position later determined
+    entities.push_back(new Base({0, 0}, 0)); 
+    entities.push_back(new Base({0, 0}, 1));
 
     lastReceived = "";
 
     beginGame = true;
+    endGame = false;
 }
 
 Game::~Game()
 {
+    stopNetworkThread();
+
     for (auto &entity : entities)
     {
         delete entity;
@@ -82,7 +200,8 @@ Game::~Game()
     if (runAsServer)
     {
         runThread = false;
-        broadcastThread.join();
+        if (broadcastThread.joinable())
+            broadcastThread.join();
     }
 }
 
@@ -95,7 +214,6 @@ void Game::run()
     Button player1Button{FileSystem::getPath("res/player1.png").c_str(), {300, 150}, 1.1};
     Button player2Button{FileSystem::getPath("res/player2.png").c_str(), {300, 300}, 1.1};
 
-    Vector2 posA = {100, 200};
     dt = 0.f;
 
     bool ss = false;
@@ -123,66 +241,35 @@ void Game::run()
                 runAsServer = false;
                 startNetworking();
                 beginGame = false;
+
+                clientConnected = true;
             }
         }
-        else // main game loop
+        else if (clientConnected && !endGame) // main game loop
         {
+            // get all packets sent by server/client
+            getPacketsIn();
+
             if (IsKeyDown(KEY_A) && !ss)
             {
+                Vector2 pos = WorldToView({400, 100}, !runAsServer);
+
                 if (runAsServer)
-                    entities.push_back(new Infantry(startPosPlayer1, 0, {100, 100}));
+                    entities.push_back(new Infantry(startPosPlayer1, 0, pos));
                 else
-                    entities.push_back(new Infantry(startPosPlayer2, 1, {100, 100}));
+                    entities.push_back(new Infantry(startPosPlayer2, 1, pos));
 
                 PacketData pkt{};
                 pkt.type = TroopType::Infantry;
-                pkt.desiredPos[0] = 100;
-                pkt.desiredPos[1] = 100;
+                pkt.desiredPos[0] = pos.x;
+                pkt.desiredPos[1] = pos.y;
 
-                network.send(pkt);
+                sendPacket(pkt);
 
                 ss = true;
             }
 
             update(); // update game state; entities
-        }
-
-        // Poll network events
-        for (int i = 0; i < 5; i++)
-        {
-            auto packet = network.pollEvent();
-            if (packet.has_value())
-            {
-                if (packet->size() < sizeof(PacketData))
-                    continue;
-
-                PacketData pkt{};
-                std::memcpy(&pkt, packet->data(), sizeof(PacketData));
-
-                printf("Received packet of type %d\n", static_cast<int>(pkt.type));
-                // process packet
-                switch (pkt.type)
-                {
-                case TroopType::Infantry:
-                {
-                    Vector2 spawnPos = (runAsServer) ? startPosPlayer2 : startPosPlayer1;
-                    entities.push_back(new Infantry(spawnPos, runAsServer ? 1 : 0, Vector2{(float)pkt.desiredPos[0], (float)pkt.desiredPos[1]}));
-                    break;
-                }
-                case TroopType::Cavallry:
-                {
-                    // handle cavallry spawn
-                    break;
-                }
-                case TroopType::Artillery:
-                {
-                    // handle artillery spawn
-                    break;
-                }
-                default:
-                    break;
-                }
-            }
         }
 
         // Draw
@@ -196,19 +283,23 @@ void Game::run()
             player1Button.draw();
             player2Button.draw();
         }
-        else
+        else if (clientConnected && !endGame)
         {
             for (auto &entity : entities)
             {
                 entity->draw(!runAsServer);
 
-                continue;
+                // continue;
                 DrawCircleLines(
                     entity->getPosition().x,
                     entity->getPosition().y,
                     entity->getCircleCollider().radius,
                     BLACK);
             }
+        }
+        else
+        {
+            DrawText(runAsServer ? "You are Player 1 (Blue)" : "You are Player 2 (Red)", 10, 10, 20, BLACK);
         }
 
         EndDrawing();
@@ -223,6 +314,9 @@ void Game::update()
     // get all attacks this frame
     for (Entity *attacker : entities)
     {
+        if (dynamic_cast<Base *>(attacker))
+            continue;
+
         if (!attacker || attacker->getHealth() <= 0)
             continue;
 
@@ -244,6 +338,13 @@ void Game::update()
             continue;
 
         target->setHealth(target->getHealth() - dmg);
+
+        if (dynamic_cast<Base *>(target) && target->getHealth() <= 0)
+        {
+            printf("here\n");
+            endGame = true;
+            return;
+        }
     }
 
     // update all entities
@@ -279,6 +380,9 @@ bool Game::resolveCollisions()
     {
         Entity *a = entities[i];
 
+        if (dynamic_cast<Base *>(a))
+            continue;
+
         for (size_t j = i + 1; j < entities.size(); j++)
         {
             Entity *b = entities[j];
@@ -289,6 +393,13 @@ bool Game::resolveCollisions()
 
             if (dist >= minDist || dist == 0.0f)
                 return false;
+
+            // handle entity - base collision
+            if (dynamic_cast<Base*>(b) && dynamic_cast<Cavalry*>(a))
+            {
+                dynamic_cast<Cavalry*>(a)->setAttackMove(false);
+                continue;
+            }
 
             float penetration = minDist - dist;
             Vector2 normal = Vector2Scale(delta, 1.0f / dist);

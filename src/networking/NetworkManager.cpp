@@ -13,8 +13,63 @@ NetworkManager::NetworkManager()
 
 NetworkManager::~NetworkManager()
 {
+    stopServerDiscoveryAsync();
     shutdown();
     enet_deinitialize();
+}
+
+void NetworkManager::startServerDiscoveryAsync(uint16_t broadcastPort, int timeoutSeconds)
+{
+    // Restart-safe: stop any previous worker first.
+    stopServerDiscoveryAsync();
+
+    discoveryStopRequested = false;
+    discoveryRunning = true;
+
+    discoveryThread = std::thread([this, broadcastPort, timeoutSeconds]()
+                                  {
+                                     while (!discoveryStopRequested)
+                                     {
+                                         // DiscoverServer is blocking up to timeoutSeconds.
+                                         // Keep timeout small (default 1s) so stop requests are responsive.
+                                         std::string ip = DiscoverServer(broadcastPort, timeoutSeconds);
+                                         if (!ip.empty())
+                                         {
+                                             {
+                                                 std::lock_guard<std::mutex> lock(discoveryMutex);
+                                                 discoveryQueue.push(std::move(ip));
+                                             }
+                                             break;
+                                         }
+                                     }
+
+                                     discoveryRunning = false; });
+}
+
+void NetworkManager::stopServerDiscoveryAsync()
+{
+    discoveryStopRequested = true;
+    if (discoveryThread.joinable())
+    {
+        discoveryThread.join();
+    }
+    discoveryRunning = false;
+}
+
+bool NetworkManager::isServerDiscoveryRunning() const
+{
+    return discoveryRunning.load();
+}
+
+std::optional<std::string> NetworkManager::pollDiscoveredServer()
+{
+    std::lock_guard<std::mutex> lock(discoveryMutex);
+    if (discoveryQueue.empty())
+        return std::nullopt;
+
+    std::string ip = std::move(discoveryQueue.front());
+    discoveryQueue.pop();
+    return ip;
 }
 
 bool NetworkManager::startServer(enet_uint16 port)
@@ -31,6 +86,7 @@ bool NetworkManager::startServer(enet_uint16 port)
     }
 
     isServer = true;
+    connected = false;
     std::cout << "Server started on port " << port << "\n";
     return true;
 }
@@ -56,8 +112,14 @@ bool NetworkManager::startClient(const std::string &hostIP, enet_uint16 port)
     }
 
     isServer = false;
+    connected = false;
     std::cout << "Connecting to server " << hostIP << ":" << port << "\n";
     return true;
+}
+
+bool NetworkManager::isConnected() const
+{
+    return connected.load();
 }
 
 void NetworkManager::send(const void *data, size_t size, enet_uint8 channel, enet_uint32 flags)
@@ -112,6 +174,7 @@ std::optional<std::vector<uint8_t>> NetworkManager::pollEvent()
             std::cout << (isServer ? "Client connected!" : "Connected to server!") << "\n";
             if (!isServer)
                 peer = event.peer;
+            connected = true;
             break;
         case ENET_EVENT_TYPE_RECEIVE:
             // Copy the bytes before destroying the ENetPacket.
@@ -120,6 +183,7 @@ std::optional<std::vector<uint8_t>> NetworkManager::pollEvent()
             break;
         case ENET_EVENT_TYPE_DISCONNECT:
             std::cout << "Peer disconnected.\n";
+            connected = false;
             break;
         default:
             break;
@@ -151,4 +215,6 @@ void NetworkManager::shutdown()
         host = nullptr;
         peer = nullptr;
     }
+
+    connected = false;
 }

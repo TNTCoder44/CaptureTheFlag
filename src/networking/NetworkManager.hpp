@@ -7,6 +7,7 @@
 #include <cstddef>
 #include <enet/enet.h>
 #include <iostream>
+#include <cstring>
 #include <thread>
 #include <atomic>
 #include <chrono>
@@ -29,7 +30,6 @@ public:
     bool startServer(enet_uint16 port);
     bool startClient(const std::string &host, enet_uint16 port);
 
-   
     template <typename T>
     void send(const T &packet, enet_uint8 channel = 0, enet_uint32 flags = ENET_PACKET_FLAG_RELIABLE)
     {
@@ -39,6 +39,14 @@ public:
     // Poll for received packets
     std::optional<std::vector<uint8_t>> pollEvent();
 
+    // Connection state (updated during pollEvent())
+    bool isConnected() const;
+
+    void startServerDiscoveryAsync(uint16_t broadcastPort = 12345, int timeoutSeconds = 1);
+    void stopServerDiscoveryAsync();
+    bool isServerDiscoveryRunning() const;
+    std::optional<std::string> pollDiscoveredServer();
+
     // Shutdown network
     void shutdown();
 
@@ -47,8 +55,16 @@ private:
     ENetPeer *peer;
     bool isServer;
 
+    std::atomic<bool> connected{false};
+
     std::queue<std::vector<uint8_t>> packetQueue;
     std::mutex queueMutex;
+
+    std::atomic<bool> discoveryStopRequested{false};
+    std::atomic<bool> discoveryRunning{false};
+    std::thread discoveryThread;
+    std::queue<std::string> discoveryQueue;
+    std::mutex discoveryMutex;
 
     // Send packets
     void send(const void *data, size_t size, enet_uint8 channel = 0, enet_uint32 flags = ENET_PACKET_FLAG_RELIABLE);
@@ -119,6 +135,12 @@ inline std::string DiscoverServer(uint16_t broadcastPort = 12345, int timeoutSec
     if (bind(sock, (sockaddr *)&listenAddr, sizeof(listenAddr)) < 0)
     {
         std::cerr << "Bind failed!\n";
+#ifdef _WIN32
+        closesocket(sock);
+        WSACleanup();
+#else
+        close(sock);
+#endif
         return "";
     }
 

@@ -1,7 +1,8 @@
 #pragma once
+
 #include "Entity.hpp"
 
-class Infantry : public Entity
+class Cavalry : public Entity
 {
 private:
     Texture2D textureFull;
@@ -12,18 +13,20 @@ private:
     int team;
     float cooldownTimer;
 
-    const float attackCooldown = 1.f; // seconds
+    const float attackCooldown = 0.5f; // seconds
     const float maxHealth = 100.f;
-	float attackRange = 40.0f;
-    const float damage = 10.0f;     // 10 dmg / s
+	float attackRange = 0.0f; // cavalry has melee range
+    const float damage = 100.0f;     // 10 dmg / s
     const int soldierSize = 200;    
-    const int maxSoldiers = 7;   // maximum number of soldiers in the infantry unit
+    const int maxSoldiers = 7;   // maximum number of soldiers in the cavalry unit
 	
-    float speed = 40.f;        // units per second
+    float speed = 60.f;        // units per second
     float spacing;
 
     std::vector<Vector2> formationOffsets;
     int soldiersAlive;
+
+    bool attackMove;
 
     float health;
     int id;
@@ -35,8 +38,8 @@ private:
 	bool isShooting;
 
 public:
-    Infantry(Vector2 pos, int team, Vector2 desiredPos = { -1.f,-1.f });
-    ~Infantry() override;
+    Cavalry(Vector2 pos, int team, Vector2 desiredPos = { -1.f,-1.f });
+    ~Cavalry() override;
 
     int getID() const override { return id; }
     void setID(int newId) override { id = newId; }
@@ -57,6 +60,8 @@ public:
     int getTeam() const override { return team; }
     CircleCollider getCircleCollider() const override { return circle; }
 	bool getShooting() const override { return isShooting; }
+
+    void setAttackMove(bool am) { attackMove = am; }
 
     void update(float dt, bool shotsFired) override;
     void draw(bool inverted) override;
