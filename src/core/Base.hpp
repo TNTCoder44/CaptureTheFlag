@@ -19,6 +19,8 @@ private:
     Vector2 player1BasePos = {400, 975}; // 400, 750
     Vector2 player2BasePos = {400, -175}; // 400, 50
 
+    Rectangle healthBarBounds; 
+
 public:
     Base(Vector2 pos, int team);
     ~Base() override;

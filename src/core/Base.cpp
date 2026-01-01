@@ -45,10 +45,19 @@ void Base::update(float dt, bool shotsFired)
 
 void Base::draw(bool inverted)
 {
+    constexpr float BAR_WIDTH  = 80.0f;
+    constexpr float BAR_HEIGHT = 8.0f;
+    constexpr float BAR_OFFSET_Y_UP = +30.0f;
+    constexpr float BAR_OFFSET_Y_DOWN = +40.0f;
+
+    // calculate color
+    float ratio = health / maxHealth;
+    Color barColor = math::HealthToColor(ratio);
+
     Texture2D texture;
 
     if (inverted)
-        texture = team == 0 ? textureInverted : textureNormal;
+        texture = team == 0 ? textureInverted : textureNormal; 
     else
         texture = team == 0 ? textureNormal : textureInverted;
 
@@ -71,10 +80,33 @@ void Base::draw(bool inverted)
 
     auto scale = 0.3f;
 
+    Vector2 viewPos = WorldToView(pos, inverted);
+
+    float offset;
+    if (inverted)
+        if(team == 0)
+            offset = BAR_OFFSET_Y_UP;
+        else
+            offset = BAR_OFFSET_Y_DOWN;
+    else
+        if(team == 0)
+            offset = BAR_OFFSET_Y_DOWN;
+        else
+            offset = BAR_OFFSET_Y_UP;
+        
+    Rectangle back = {
+        viewPos.x - BAR_WIDTH / 2.0f,
+        viewPos.y + offset,
+        BAR_WIDTH,
+        BAR_HEIGHT
+    };
+
+    Rectangle front = back;
+    front.width *= ratio;
+
     // if it is drawn from the client side, the texture will always be drawn inverted on the other side, no matter what team it belongs to
     if (inverted)
-    {
-        Vector2 viewPos = WorldToView(pos, inverted);                                    // from world to view coordinates
+    {                                    // from world to view coordinates
         DrawEntityTexture(texture, viewPos, {(float)texture.width, (float)texture.height}, team == 0, scale); // flipped if other player
     }
     else
@@ -82,4 +114,13 @@ void Base::draw(bool inverted)
         // server = world coordinates
         DrawEntityTexture(texture, pos, {(float)texture.width, (float)texture.height}, team == 1, scale); // flipped if other player
     }
+
+    // background
+    DrawRectangleRec(back, DARKGRAY);
+
+    // foreground - color
+    DrawRectangleRec(front, barColor);
+
+    // frame
+    DrawRectangleLinesEx(back, 1.0f, BLACK);
 }

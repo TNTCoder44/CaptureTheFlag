@@ -28,4 +28,33 @@ namespace math
 
     	//return FLT_MAX;
 	}
+
+	// calculate color of the health bar based on health of entity
+	// green -> yellow -> red
+	inline Color HealthToColor(float healthRatio) 
+	{
+		healthRatio = std::clamp(healthRatio, 0.0f, 1.0f);
+
+		if (healthRatio > 0.5f) {
+			// green -> yellow
+			float t = (healthRatio - 0.5f) / 0.5f;
+
+			return Color{
+				(unsigned char)(255 * (1.0f - t)), // R
+				255,                               // G
+				0,                                 // B
+				255								   // A
+			};
+		} else {
+			// yellow -> red
+			float t = healthRatio / 0.5f;
+
+			return Color{
+				255,                               // R
+				(unsigned char)(255 * t),          // G
+				0,                                 // B
+				255								   // A
+			};
+		}
+	}
 }
