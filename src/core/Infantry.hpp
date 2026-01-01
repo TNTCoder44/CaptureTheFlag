@@ -16,10 +16,10 @@ private:
     const float maxHealth = 100.f;
 	float attackRange = 40.0f;
     const float damage = 10.0f;     // 10 dmg / s
-    const int soldierSize = 200;    
+    const int soldierSize = 100;    
     const int maxSoldiers = 7;   // maximum number of soldiers in the infantry unit
 	
-    float speed = 40.f;        // units per second
+    float speed = 20.f;        // units per second
     float spacing;
 
     std::vector<Vector2> formationOffsets;

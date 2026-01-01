@@ -17,7 +17,7 @@ Infantry::Infantry(Vector2 pos, int team, Vector2 desiredPos) : Entity(pos, team
     desiredPosition = desiredPos;
 
     soldiersAlive = maxSoldiers; // initial number of soldiers
-    spacing = 75.f;     // spacing between soldiers in formation
+    spacing = 37.5f;     // spacing between soldiers in formation
 
     health = maxHealth;             // 100.f
     cooldownTimer = attackCooldown; // ready to attack
@@ -38,7 +38,7 @@ Infantry::Infantry(Vector2 pos, int team, Vector2 desiredPos) : Entity(pos, team
         throw std::runtime_error("Invalid team for Infantry entity");
 
     // set collider
-    circle.radius = 20.f;
+    circle.radius = 10.f;
 
     rebuildFormation();
 }

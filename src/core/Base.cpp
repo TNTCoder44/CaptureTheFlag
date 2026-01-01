@@ -69,15 +69,17 @@ void Base::draw(bool inverted)
         pos.y += 225.f;
     }
 
+    auto scale = 0.3f;
+
     // if it is drawn from the client side, the texture will always be drawn inverted on the other side, no matter what team it belongs to
     if (inverted)
     {
         Vector2 viewPos = WorldToView(pos, inverted);                                    // from world to view coordinates
-        DrawEntityTexture(texture, viewPos, {(float)texture.width, (float)texture.height}, team == 0, 0.3f); // flipped if other player
+        DrawEntityTexture(texture, viewPos, {(float)texture.width, (float)texture.height}, team == 0, scale); // flipped if other player
     }
     else
     {
         // server = world coordinates
-        DrawEntityTexture(texture, pos, {(float)texture.width, (float)texture.height}, team == 1, 0.3f); // flipped if other player
+        DrawEntityTexture(texture, pos, {(float)texture.width, (float)texture.height}, team == 1, scale); // flipped if other player
     }
 }

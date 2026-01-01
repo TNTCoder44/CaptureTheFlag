@@ -3,34 +3,43 @@
 
 class Button
 {
-    public:
-        Button(const char* imagePath, Vector2 imagePosition, float scale);
-        ~Button();
-        void draw();
-        void update(Vector2 mousePos);
+public:
+    Button() = default;
+    Button(const char *imagePath, Vector2 imagePosition, float scale);
+    ~Button();
 
-        inline bool isPressed()
+    Button(const Button &) = delete;
+    Button &operator=(const Button &) = delete;
+    Button(Button &&other) noexcept;
+    Button &operator=(Button &&other) noexcept;
+
+    void init(const char *imagePath, Vector2 imagePosition, float scale);
+    void draw();
+    void update(Vector2 mousePos);
+
+    inline bool isPressed()
+    {
+        if (btnAction)
         {
-            if (btnAction)
-            {
-                btnAction = false;
-                return true;
-            }
-            return false;
+            btnAction = false;
+            return true;
         }
+        return false;
+    }
 
-    private:
-        Texture2D texture;
-        Vector2 position;
-        float scale;
+private:
+    Texture2D texture{};
+    bool initialized = false;
+    Vector2 position;
+    float scale;
 
-        // Define frame rectangle for drawing
-        float frameHeight;
-        Rectangle sourceRec;
+    // Define frame rectangle for drawing
+    float frameHeight;
+    Rectangle sourceRec;
 
-        // Define button bounds on screen
-        Rectangle btnBounds;
+    // Define button bounds on screen
+    Rectangle btnBounds;
 
-        int btnState = 0;               // Button state: 0-NORMAL, 1-MOUSE_HOVER, 2-PRESSED
-        bool btnAction = false;         // Button action should be activated through clicking
+    int btnState = 0;       // Button state: 0-NORMAL, 1-MOUSE_HOVER, 2-PRESSED
+    bool btnAction = false; // Button action should be activated through clicking
 };

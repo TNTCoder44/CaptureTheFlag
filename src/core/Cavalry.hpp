@@ -16,11 +16,11 @@ private:
     const float attackCooldown = 0.5f; // seconds
     const float maxHealth = 100.f;
 	float attackRange = 0.0f; // cavalry has melee range
-    const float damage = 100.0f;     // 10 dmg / s
-    const int soldierSize = 200;    
+    const float damage = 15.0f;     // 10 dmg / s
+    const int soldierSize = 100;    
     const int maxSoldiers = 7;   // maximum number of soldiers in the cavalry unit
 	
-    float speed = 60.f;        // units per second
+    float speed = 40.f;        // units per second
     float spacing;
 
     std::vector<Vector2> formationOffsets;
