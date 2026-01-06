@@ -15,6 +15,7 @@
 #include <mutex>
 #include <thread>
 #include <atomic>
+#include <unordered_map>
 
 #include "utils/Packets.hpp"
 #include "utils/Button.hpp"

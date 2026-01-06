@@ -78,7 +78,7 @@ Game::~Game()
     }
 }
 
-void Game::run() // TODO: clean up start of the function with member variables
+void Game::run()
 {
     bool ss = false; // delete after testing
 
@@ -406,8 +406,12 @@ void Game::getPacketsIn()
             break;
         }
         case TroopType::Cavallry:
+            Vector2 spawnPos = (runAsServer) ? startPosPlayer2 : startPosPlayer1;
+            entities.push_back(new Cavalry(spawnPos, runAsServer ? 1 : 0, Vector2{ (float)pkt.desiredPos[0], (float)pkt.desiredPos[1] }));
             break;
         case TroopType::Artillery:
+            Vector2 spawnPos = (runAsServer) ? startPosPlayer2 : startPosPlayer1;
+            entities.push_back(new Artillery(spawnPos, runAsServer ? 1 : 0, Vector2{ (float)pkt.desiredPos[0], (float)pkt.desiredPos[1] }));
             break;
         default:
             break;
