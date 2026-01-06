@@ -35,6 +35,7 @@ public:
     }
     float getHealth() const override { return health; }
     void setPosition(Vector2 pos) override { }; // Base position is fixed
+    void setDesiredPosition(Vector2 pos) override { };
     Vector2 getPosition() const override { return position; }
     int getTeam() const override { return team; }
     CircleCollider getCircleCollider() const override { return circle; }

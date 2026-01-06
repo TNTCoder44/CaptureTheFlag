@@ -150,8 +150,6 @@ std::vector<Vector2> Cavalry::generateCircleFormation()
 
         slotsInRing = std::max(slotsInRing, 1);
 
-        // printf("slots %d\n", slotsInRing);
-
         for (int i = 0; i < slotsInRing && placed < count; i++)
         {
             float angle = (2.0f * PI * i) / slotsInRing;

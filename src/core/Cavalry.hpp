@@ -57,6 +57,7 @@ public:
 	float getHealth() const override { return health; }
 	void setPosition(Vector2 pos) override{ position = pos; }
 	Vector2 getPosition() const override { return position; }
+    void setDesiredPosition(Vector2 pos) override { desiredPosition = pos; }
     int getTeam() const override { return team; }
     CircleCollider getCircleCollider() const override { return circle; }
 	bool getShooting() const override { return isShooting; }

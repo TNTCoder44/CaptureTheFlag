@@ -32,6 +32,7 @@ public:
     virtual int getID() const { return id; }
     virtual void setID(int newId) = 0;
 
+    virtual void setDesiredPosition(Vector2 pos) = 0;
     virtual void setPosition(Vector2 pos) = 0;
     virtual Vector2 getPosition() const { return position; } // get world position
     virtual int getTeam() const { return team; }

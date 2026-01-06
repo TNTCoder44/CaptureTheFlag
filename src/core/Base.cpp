@@ -41,6 +41,8 @@ void Base::update(float dt, bool shotsFired)
 {
     // Base does not move
 
+    printf("%f\n", health);
+
 }
 
 void Base::draw(bool inverted)

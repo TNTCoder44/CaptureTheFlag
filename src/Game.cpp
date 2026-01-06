@@ -17,7 +17,6 @@
 
 Game::Game()
 {
-    printf("got here\n");
     runAsServer = false;
 
     InitWindow(screenWidth, screenHeight, "Capture The Flag");
@@ -48,10 +47,6 @@ Game::Game()
 
     beginGame = true;
     endGame = false;
-
-    // for test
-    // entities.push_back(new Cavalry(startPosPlayer1, 1, {400, 200}));
-    entities.push_back(new Artillery(startPosPlayer2, 1, {400, 600}));
 }
 
 Game::~Game()
@@ -109,32 +104,50 @@ void Game::run()
         {
             // nothing for now
         }
-        else if (clientConnected) // main game loop
+        else if (clientConnected || true) // main game loop
         {
             // get all packets sent by server/client
             getPacketsIn();
 
-            // Input handling
-            if (IsKeyDown(KEY_A)) // change
-            {
-                Vector2 pos = WorldToView({400, 100}, !runAsServer);
+            PacketData pkt{};
+            pkt.type = TroopType::None;
+            Vector2 pos = ViewToWorld(mousePoint, !runAsServer);
 
-                /*
+            // Input handling
+            if (IsKeyDown(KEY_ONE)) // Infantry
+            {
+                if (runAsServer)
+                    entities.push_back(new Infantry(startPosPlayer1, 0, pos));
+                else
+                    entities.push_back(new Infantry(startPosPlayer2, 1, pos));
+
+                pkt.type = TroopType::Infantry;
+            }
+            else if (IsKeyDown(KEY_TWO)) // cavalry
+            {
+                pos = ViewToWorld(runAsServer ? Vector2{400,50} : Vector2{400,750}, !runAsServer);
                 if (runAsServer)
                     entities.push_back(new Cavalry(startPosPlayer1, 0, pos));
                 else
                     entities.push_back(new Cavalry(startPosPlayer2, 1, pos));
-*/
-                entities.push_back(new Infantry({400, 600}, 0,{400, 300}));
 
-                PacketData pkt{};
-                pkt.type = TroopType::Infantry;
+                pkt.type = TroopType::Cavallry;
+            }
+            else if (IsKeyDown(KEY_THREE)) // artillery
+            {
+                if (runAsServer)
+                    entities.push_back(new Artillery(startPosPlayer1, 0, pos));
+                else
+                    entities.push_back(new Artillery(startPosPlayer2, 1, pos));
+
+                pkt.type = TroopType::Artillery;
+            }
+                
+            if (pkt.type != TroopType::None)
                 pkt.desiredPos[0] = pos.x;
                 pkt.desiredPos[1] = pos.y;
-
                 sendPacket(pkt);
-            }
-
+            
             update(); // update game state; entities
         }
 
@@ -153,7 +166,7 @@ void Game::run()
         {
             DrawText(endText.c_str(), screenWidth / 2 - MeasureText(endText.c_str(), 40) / 2, screenHeight / 2 - 20, 40, BLACK);
         }
-        else if (clientConnected)
+        else if (clientConnected || true)
         {
             for (auto &entity : entities)
             {
@@ -231,7 +244,6 @@ void Game::update()
             continue;
 
         startPos.reserve(entities.size());
-        std::cout << entity->getPosition().x << ", " << entity->getPosition().y << "\n";
         startPos.emplace(entity, entity->getPosition());
         entity->update(dt, shooters.find(entity) != shooters.end());
     }
@@ -411,6 +423,11 @@ void Game::getPacketsIn()
             entities.push_back(new Artillery(spawnPos, runAsServer ? 1 : 0, Vector2{ (float)pkt.desiredPos[0], (float)pkt.desiredPos[1] }));
             break;
         }
+        case TroopType::None:
+        {
+            // nothing got sent
+            break;
+        }
         default:
             break;
         }
@@ -423,17 +440,11 @@ void Game::networkThreadMain()
 
     while (networkThreadRunning)
     {
-        int i = 0;
         if (!runAsServer && !connectAttemptStarted)
         {
-            i++;
-            printf("Discovering server... attempt %d\n", i);
             std::string serverIP;
-            std::cout << serverIP << "\n";
             while (networkThreadRunning && serverIP.empty())
             {
-                printf("here\n");
-                std::cout << serverIP << "\n";
                 serverIP = DiscoverServer(12345, 5);
             }
 

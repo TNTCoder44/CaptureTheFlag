@@ -9,7 +9,8 @@ enum class TroopType : uint8_t
 {
     Infantry = 0,
     Cavallry = 1,
-    Artillery = 2
+    Artillery = 2,
+    None = 255
 };
 
 // Ensure tight packing of the struct for comatibility
