@@ -34,7 +34,8 @@ Game::Game()
     player2Button.init(FileSystem::getPath("res/player2.png").c_str(), {300, 300}, 1.1f);
 
     background = LoadTexture(FileSystem::getPath("res/background.png").c_str());
-
+    coinTexture = LoadTexture(FileSystem::getPath("res/coin.png").c_str());
+            
     // Base, position later determined
     entities.push_back(new Base({0, 0}, 0));
     entities.push_back(new Base({0, 0}, 1));
@@ -61,6 +62,7 @@ Game::~Game()
 
     network.shutdown();
     UnloadTexture(background); // Unload button texture
+    UnloadTexture(coinTexture);
     CloseAudioDevice();        // Close audio device
 
     CloseWindow(); // Close window and OpenGL context
@@ -80,7 +82,6 @@ void Game::run()
     {
         dt = GetFrameTime();             // delta time that passes between the loop cycles
         mousePoint = GetMousePosition(); // current mouse pos
-
         bool mousePressed = IsMouseButtonPressed(MOUSE_LEFT_BUTTON);
 
         if (beginGame) // start of the game, starting screen
@@ -109,6 +110,15 @@ void Game::run()
             // get all packets sent by server/client
             getPacketsIn();
 
+            // update currency
+            static float incomeTimer = 0.f;
+            incomeTimer += dt;
+            if (incomeTimer >= 2.f)
+            {
+                currency += income;
+                incomeTimer = 0.f;
+            }
+
             PacketData pkt{};
             pkt.type = TroopType::None;
             Vector2 pos = ViewToWorld(mousePoint, !runAsServer);
@@ -116,6 +126,10 @@ void Game::run()
             // Input handling
             if (IsKeyDown(KEY_ONE)) // Infantry
             {
+                if (currency < infantryCost)
+                    goto _continue;
+
+                currency -= infantryCost;
                 if (runAsServer)
                     entities.push_back(new Infantry(startPosPlayer1, 0, pos));
                 else
@@ -125,6 +139,9 @@ void Game::run()
             }
             else if (IsKeyDown(KEY_TWO)) // cavalry
             {
+                if (currency < cavalryCost)
+                    goto _continue;
+                currency -= cavalryCost;
                 if (runAsServer)
                     entities.push_back(new Cavalry(startPosPlayer1, 0, pos));
                 else
@@ -134,6 +151,9 @@ void Game::run()
             }
             else if (IsKeyDown(KEY_THREE)) // artillery
             {
+                if (currency < artilleryCost)
+                    goto _continue;
+                currency -= artilleryCost;
                 if (runAsServer)
                     entities.push_back(new Artillery(startPosPlayer1, 0, pos));
                 else
@@ -146,7 +166,8 @@ void Game::run()
                 pkt.desiredPos[0] = pos.x;
                 pkt.desiredPos[1] = pos.y;
                 sendPacket(pkt);
-            
+       
+        _continue:         
             update(); // update game state; entities
         }
 
@@ -167,6 +188,11 @@ void Game::run()
         }
         else if (clientConnected)
         {
+            // draw currency
+            Vector2 currencyPos = {780.f, 40.f};
+            DrawTextureEx(coinTexture, {currencyPos.x-110.f, currencyPos.y-20.f}, 0.f, 0.1f, WHITE);
+            DrawText(std::to_string(currency).c_str(), currencyPos.x - 90.f, currencyPos.y, 25, WHITE);
+
             for (auto &entity : entities)
             {
                 entity->draw(!runAsServer);

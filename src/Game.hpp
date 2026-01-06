@@ -73,11 +73,14 @@ private:
     // for collision resolution between same team entities
     std::unordered_map<Entity *, Vector2> startPos;
 
-    int currency = 100;
+    Texture2D coinTexture;
+    int currency = 30;
 
-    const int infantryCost = 10;
-    const int cavalryCost = 20;
-    const int artilleryCost = 30;
+    const int income = 3;
+
+    const int infantryCost = 20;
+    const int cavalryCost = 25;
+    const int artilleryCost = 40;
 
 public:
     Game();

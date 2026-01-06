@@ -15,7 +15,7 @@ private:
     const float attackCooldown = 1.f; // seconds
     const float maxHealth = 100.f;
 	float attackRange = 40.0f;
-    const float damage = 15.0f;     // 15 dmg / s
+    const float damage = 25.0f;     // 25 dmg / s
     const int soldierSize = 100;    
     const int maxSoldiers = 7;   // maximum number of soldiers in the infantry unit
 	
