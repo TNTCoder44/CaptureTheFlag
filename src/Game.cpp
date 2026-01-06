@@ -80,8 +80,6 @@ Game::~Game()
 
 void Game::run()
 {
-    bool ss = false; // delete after testing
-
     // Main game loop
     while (!WindowShouldClose() && running) // Detect window close button or ESC key
     {
@@ -105,21 +103,19 @@ void Game::run()
                 runAsServer = false;
                 startNetworking();
                 beginGame = false;
-
-                clientConnected = true;
             }
         }
         else if (endGame)
         {
             // nothing for now
         }
-        else if (clientConnected || true) // main game loop
+        else if (clientConnected) // main game loop
         {
             // get all packets sent by server/client
             getPacketsIn();
 
             // Input handling
-            if (IsKeyDown(KEY_A) && !ss) // change
+            if (IsKeyDown(KEY_A)) // change
             {
                 Vector2 pos = WorldToView({400, 100}, !runAsServer);
 
@@ -137,8 +133,6 @@ void Game::run()
                 pkt.desiredPos[1] = pos.y;
 
                 sendPacket(pkt);
-
-                ss = true;
             }
 
             update(); // update game state; entities
@@ -159,13 +153,13 @@ void Game::run()
         {
             DrawText(endText.c_str(), screenWidth / 2 - MeasureText(endText.c_str(), 40) / 2, screenHeight / 2 - 20, 40, BLACK);
         }
-        else if (clientConnected || true)
+        else if (clientConnected)
         {
             for (auto &entity : entities)
             {
                 entity->draw(!runAsServer);
 
-                // continue;
+                continue;
 
                 auto pos = entity->getPosition();
                 pos = WorldToView(pos, !runAsServer);
@@ -406,13 +400,17 @@ void Game::getPacketsIn()
             break;
         }
         case TroopType::Cavallry:
+        {
             Vector2 spawnPos = (runAsServer) ? startPosPlayer2 : startPosPlayer1;
             entities.push_back(new Cavalry(spawnPos, runAsServer ? 1 : 0, Vector2{ (float)pkt.desiredPos[0], (float)pkt.desiredPos[1] }));
             break;
+        }
         case TroopType::Artillery:
+        {
             Vector2 spawnPos = (runAsServer) ? startPosPlayer2 : startPosPlayer1;
             entities.push_back(new Artillery(spawnPos, runAsServer ? 1 : 0, Vector2{ (float)pkt.desiredPos[0], (float)pkt.desiredPos[1] }));
             break;
+        }
         default:
             break;
         }
@@ -425,12 +423,18 @@ void Game::networkThreadMain()
 
     while (networkThreadRunning)
     {
+        int i = 0;
         if (!runAsServer && !connectAttemptStarted)
         {
+            i++;
+            printf("Discovering server... attempt %d\n", i);
             std::string serverIP;
+            std::cout << serverIP << "\n";
             while (networkThreadRunning && serverIP.empty())
             {
-                serverIP = DiscoverServer(12345, 1);
+                printf("here\n");
+                std::cout << serverIP << "\n";
+                serverIP = DiscoverServer(12345, 5);
             }
 
             if (!serverIP.empty() && networkThreadRunning)
