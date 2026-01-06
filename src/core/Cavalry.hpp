@@ -16,7 +16,7 @@ private:
     const float attackCooldown = 0.5f; // seconds
     const float maxHealth = 100.f;
 	float attackRange = 0.0f; // cavalry has melee range
-    const float damage = 15.0f;     // 10 dmg / s
+    const float damage = 10.0f;     // 10 dmg / s
     const int soldierSize = 100;    
     const int maxSoldiers = 7;   // maximum number of soldiers in the cavalry unit
 	

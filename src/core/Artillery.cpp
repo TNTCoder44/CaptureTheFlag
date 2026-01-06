@@ -69,6 +69,9 @@ void Artillery::update(float dt, bool shotsFired)
 
 void Artillery::draw(bool inverted)
 {
+    float ratio = health / maxHealth;
+    Color barColor = math::HealthToColor(ratio);
+
     // draw the Artillery texture 
     Texture2D texture;
 
@@ -79,10 +82,33 @@ void Artillery::draw(bool inverted)
 
     auto scale = 0.05f;
 
+    Vector2 viewPos = WorldToView(position, inverted);    
+
+    float offset;
+    if (inverted)
+        if(team == 0)
+            offset = BAR_OFFSET_Y_UP;
+        else
+            offset = BAR_OFFSET_Y_DOWN;
+    else
+        if(team == 0)
+            offset = BAR_OFFSET_Y_DOWN;
+        else
+            offset = BAR_OFFSET_Y_UP;
+        
+    Rectangle back = {
+        viewPos.x - BAR_WIDTH / 2.0f,
+        viewPos.y + offset,
+        BAR_WIDTH,
+        BAR_HEIGHT
+    };
+
+    Rectangle front = back;
+    front.width *= ratio;
+
     // if it is drawn from the client side, the texture will always be drawn inverted on the other side, no matter what team it belongs to
     if (inverted)
-    {
-        Vector2 viewPos = WorldToView(position, inverted);                                    // from world to view coordinates
+    {                                // from world to view coordinates
         DrawEntityTexture(texture, viewPos, {(float)texture.width, (float)texture.height}, team == 0, scale); // flipped if other player
     }
     else
@@ -90,6 +116,16 @@ void Artillery::draw(bool inverted)
         // server = world coordinates
         DrawEntityTexture(texture, position, {(float)texture.width, (float)texture.height}, team == 1, scale); // flipped if other player
     }
+
+
+    // background
+    DrawRectangleRec(back, DARKGRAY);
+
+    // foreground - color
+    DrawRectangleRec(front, barColor);
+
+    // frame
+    DrawRectangleLinesEx(back, 1.0f, BLACK);
 }
 
 Vector2 Artillery::computeMovement(float dt)

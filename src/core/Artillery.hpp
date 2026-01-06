@@ -13,10 +13,10 @@ private:
 
     const float attackCooldown = 2.f; // seconds
     const float maxHealth = 200.f;
-    float attackRange = 80.0f;
+    float attackRange = 100.0f;
     const float damage = 20.0f; // 10 dmg / s
 
-    float speed = 20.f; // units per second
+    float speed = 10.f; // units per second
 
     float health;
     int id;
@@ -26,6 +26,8 @@ private:
     CircleCollider circle;
 
     bool isShooting;
+
+    Rectangle healthBarBounds; 
 
 public:
     Artillery(Vector2 pos, int team, Vector2 desiredPos = {-1.f, -1.f});

@@ -7,6 +7,11 @@
 #include "../core/Entity.hpp"
 #include <cfloat>
 
+constexpr float BAR_WIDTH  = 80.0f;
+constexpr float BAR_HEIGHT = 8.0f;
+constexpr float BAR_OFFSET_Y_UP = +30.0f;
+constexpr float BAR_OFFSET_Y_DOWN = +40.0f;
+
 namespace math
 {
 	// simple distance between two points

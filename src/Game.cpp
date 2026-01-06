@@ -104,7 +104,7 @@ void Game::run()
         {
             // nothing for now
         }
-        else if (clientConnected || true) // main game loop
+        else if (clientConnected) // main game loop
         {
             // get all packets sent by server/client
             getPacketsIn();
@@ -125,7 +125,6 @@ void Game::run()
             }
             else if (IsKeyDown(KEY_TWO)) // cavalry
             {
-                pos = ViewToWorld(runAsServer ? Vector2{400,50} : Vector2{400,750}, !runAsServer);
                 if (runAsServer)
                     entities.push_back(new Cavalry(startPosPlayer1, 0, pos));
                 else
@@ -166,7 +165,7 @@ void Game::run()
         {
             DrawText(endText.c_str(), screenWidth / 2 - MeasureText(endText.c_str(), 40) / 2, screenHeight / 2 - 20, 40, BLACK);
         }
-        else if (clientConnected || true)
+        else if (clientConnected)
         {
             for (auto &entity : entities)
             {
@@ -309,6 +308,7 @@ bool Game::resolveCollisions()
             // same-team collision: both stay where they were at the beginning of this step
             if (a->getTeam() == b->getTeam())
             {
+                continue;
 COLLISION:
                 auto ita = startPos.find(a);
                 if (ita != startPos.end())
