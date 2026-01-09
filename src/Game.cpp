@@ -9,6 +9,7 @@
 
 #include "utils/Math.hpp"
 #include "utils/ViewTransform.hpp"
+#include "utils/AudioManager.hpp"
 
 #include "core/Infantry.hpp"
 #include "core/Cavalry.hpp"
@@ -22,25 +23,29 @@ Game::Game()
     InitWindow(screenWidth, screenHeight, "Capture The Flag");
 
 #ifdef _WIN32
-    Image icon = LoadImage(FileSystem::getPath("res/icon.png").c_str());
+    Image icon = LoadImage(FileSystem::getPath("res/utils/icon.png").c_str());
     SetWindowIcon(icon);
     UnloadImage(icon);
 #endif
 
     SetTargetFPS(120);
-    InitAudioDevice(); // Initialize audio device
+    
+    // Init audio
+    AudioManager::getInstance().Init(true);
 
-    player1Button.init(FileSystem::getPath("res/player1.png").c_str(), {300, 150}, 1.1f);
-    player2Button.init(FileSystem::getPath("res/player2.png").c_str(), {300, 300}, 1.1f);
-    restartButton.init(FileSystem::getPath("res/restart.png").c_str(), {250, 500}, 1.1f);
+    // init utils
+    player1Button.init(FileSystem::getPath("res/utils/player1.png").c_str(), {300, 150}, 1.1f);
+    player2Button.init(FileSystem::getPath("res/utils/player2.png").c_str(), {300, 300}, 1.1f);
+    restartButton.init(FileSystem::getPath("res/utils/restart.png").c_str(), {250, 500}, 1.1f);
 
-    background = LoadTexture(FileSystem::getPath("res/background.png").c_str());
-    coinTexture = LoadTexture(FileSystem::getPath("res/coin.png").c_str());
+    background = LoadTexture(FileSystem::getPath("res/utils/background.png").c_str());
+    coinTexture = LoadTexture(FileSystem::getPath("res/utils/coin.png").c_str());
 
     // Base, position later determined
     entities.push_back(new Base({0, 0}, 0));
     entities.push_back(new Base({0, 0}, 1));
 
+    // game variables
     lastReceived = "";
 
     mousePoint = {0, 0};
@@ -64,17 +69,21 @@ Game::~Game()
     // network already shut down by resetNetworkingState()
     UnloadTexture(background); // Unload button texture
     UnloadTexture(coinTexture);
-    CloseAudioDevice(); // Close audio device
+
+    AudioManager::getInstance().Shutdown();
 
     CloseWindow(); // Close window and OpenGL context
 }
 
 int Game::allocateEntityId(int team)
 {
-    // Encode team in top 8 bits to avoid collisions between peers
-    // Low 24 bits are a monotonically increasing counter for the local player
-    const int seq = (nextLocalEntitySeq++ & 0x00FFFFFF);
-    return ((team & 0xFF) << 24) | seq;
+    // Encode team in top 8 bits to avoid collisions between client / server and the two teams
+    // Low 24 bits are an increasing counter for the local player (id -> 1, 2, 3...)
+    // High 8 bits are the team number. here: 0, 1
+    // [ 8 bits team num ][ 24 bits local entity seq ]
+
+    const int seq = (nextLocalEntitySeq++ & 0x00FFFFFF); // only lower 24 bits with the and
+    return ((team & 0xFF) << 24) | seq; // upper 8 bits for team number - combine the bits with an or to one final int
 }
 
 void Game::stopBroadcastThread()
