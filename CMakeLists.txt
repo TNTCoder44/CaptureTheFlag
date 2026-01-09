@@ -128,5 +128,5 @@ elseif (WIN32)
 
     target_compile_definitions(${PROJECT_NAME} PRIVATE "_CRT_SECURE_NO_WARNINGS")
     target_compile_options(${PROJECT_NAME} PRIVATE "/W4")
-    target_link_options(${PROJECT_NAME} PRIVATE "/SUBSYSTEM:Console;/ENTRY:mainCRTStartup")
+    target_link_options(${PROJECT_NAME} PRIVATE "/SUBSYSTEM:Windows;/ENTRY:mainCRTStartup")
 endif()

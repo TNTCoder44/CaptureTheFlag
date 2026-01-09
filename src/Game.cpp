@@ -32,10 +32,11 @@ Game::Game()
 
     player1Button.init(FileSystem::getPath("res/player1.png").c_str(), {300, 150}, 1.1f);
     player2Button.init(FileSystem::getPath("res/player2.png").c_str(), {300, 300}, 1.1f);
+    restartButton.init(FileSystem::getPath("res/restart.png").c_str(), {250, 500}, 1.1f);
 
     background = LoadTexture(FileSystem::getPath("res/background.png").c_str());
     coinTexture = LoadTexture(FileSystem::getPath("res/coin.png").c_str());
-            
+
     // Base, position later determined
     entities.push_back(new Base({0, 0}, 0));
     entities.push_back(new Base({0, 0}, 1));
@@ -52,7 +53,7 @@ Game::Game()
 
 Game::~Game()
 {
-    stopNetworkThread();
+    resetNetworkingState();
 
     for (auto &entity : entities)
     {
@@ -60,18 +61,52 @@ Game::~Game()
     }
     entities.clear();
 
-    network.shutdown();
+    // network already shut down by resetNetworkingState()
     UnloadTexture(background); // Unload button texture
     UnloadTexture(coinTexture);
-    CloseAudioDevice();        // Close audio device
+    CloseAudioDevice(); // Close audio device
 
     CloseWindow(); // Close window and OpenGL context
+}
 
-    if (runAsServer)
+int Game::allocateEntityId(int team)
+{
+    // Encode team in top 8 bits to avoid collisions between peers
+    // Low 24 bits are a monotonically increasing counter for the local player
+    const int seq = (nextLocalEntitySeq++ & 0x00FFFFFF);
+    return ((team & 0xFF) << 24) | seq;
+}
+
+void Game::stopBroadcastThread()
+{
+    // Stop any existing broadcaster
+    runThread = false;
+    if (broadcastThread.joinable())
     {
-        runThread = false;
-        if (broadcastThread.joinable())
-            broadcastThread.join();
+        broadcastThread.join();
+    }
+    runThread = true;
+}
+
+void Game::resetNetworkingState()
+{
+    // Ensure no background thread is using NetworkManager while reset
+    stopNetworkThread();
+    stopBroadcastThread();
+
+    network.shutdown();
+    clientConnected = false;
+
+    // clean packet queues
+    {
+        std::lock_guard<std::mutex> lock(incomingMutex);
+        std::queue<PacketData> empty;
+        incomingPackets.swap(empty);
+    }
+    {
+        std::lock_guard<std::mutex> lock(outgoingMutex);
+        std::queue<PacketData> empty;
+        outgoingPackets.swap(empty);
     }
 }
 
@@ -103,9 +138,14 @@ void Game::run()
         }
         else if (endGame)
         {
-            // nothing for now
+            // check for button press to restart
+            restartButton.update(mousePoint);
+            if (restartButton.isPressed())
+            {
+                restartGame();
+            }
         }
-        else if (clientConnected) // main game loop
+        else if (clientConnected || true) // main game loop
         {
             // get all packets sent by server/client
             getPacketsIn();
@@ -119,6 +159,36 @@ void Game::run()
                 incomeTimer = 0.f;
             }
 
+            // handle mouse input for rearranging troops
+            if (mousePressed)
+            {
+                Vector2 worldPos = ViewToWorld(mousePoint, !runAsServer);
+
+                if (!selectedTroop)
+                {
+                    Entity *ent = searchForTroopAt(worldPos);
+                    
+                    if (ent)
+                    {
+                        selectedTroop = true;
+                        selectedEntity = ent;
+                    }
+                }
+                else
+                {
+                    PacketData pkt{};
+                    pkt.type = TroopType::Change;
+                    pkt.entityId = selectedEntity->getID();
+                    pkt.desiredPos[0] = worldPos.x;
+                    pkt.desiredPos[1] = worldPos.y;
+                    selectedEntity->setDesiredPosition(worldPos);
+                    sendPacket(pkt);
+
+                    selectedTroop = false;
+                    selectedEntity = nullptr;
+                }
+            }
+
             PacketData pkt{};
             pkt.type = TroopType::None;
             Vector2 pos = ViewToWorld(mousePoint, !runAsServer);
@@ -130,10 +200,13 @@ void Game::run()
                     goto _continue;
 
                 currency -= infantryCost;
-                if (runAsServer)
-                    entities.push_back(new Infantry(startPosPlayer1, 0, pos));
-                else
-                    entities.push_back(new Infantry(startPosPlayer2, 1, pos));
+                const int team = runAsServer ? 0 : 1;
+                const Vector2 spawnPos = runAsServer ? startPosPlayer1 : startPosPlayer2;
+                Entity *ent = new Infantry(spawnPos, team, pos);
+                const int id = allocateEntityId(team);
+                ent->setID(id);
+                entities.push_back(ent);
+                pkt.entityId = id;
 
                 pkt.type = TroopType::Infantry;
             }
@@ -142,10 +215,13 @@ void Game::run()
                 if (currency < cavalryCost)
                     goto _continue;
                 currency -= cavalryCost;
-                if (runAsServer)
-                    entities.push_back(new Cavalry(startPosPlayer1, 0, pos));
-                else
-                    entities.push_back(new Cavalry(startPosPlayer2, 1, pos));
+                const int team = runAsServer ? 0 : 1;
+                const Vector2 spawnPos = runAsServer ? startPosPlayer1 : startPosPlayer2;
+                Entity *ent = new Cavalry(spawnPos, team, pos);
+                const int id = allocateEntityId(team);
+                ent->setID(id);
+                entities.push_back(ent);
+                pkt.entityId = id;
 
                 pkt.type = TroopType::Cavallry;
             }
@@ -154,21 +230,32 @@ void Game::run()
                 if (currency < artilleryCost)
                     goto _continue;
                 currency -= artilleryCost;
-                if (runAsServer)
-                    entities.push_back(new Artillery(startPosPlayer1, 0, pos));
-                else
-                    entities.push_back(new Artillery(startPosPlayer2, 1, pos));
+                const int team = runAsServer ? 0 : 1;
+                const Vector2 spawnPos = runAsServer ? startPosPlayer1 : startPosPlayer2;
+                Entity *ent = new Artillery(spawnPos, team, pos);
+                const int id = allocateEntityId(team);
+                ent->setID(id);
+                entities.push_back(ent);
+                pkt.entityId = id;
 
                 pkt.type = TroopType::Artillery;
             }
-                
+
             if (pkt.type != TroopType::None)
+            {
                 pkt.desiredPos[0] = pos.x;
                 pkt.desiredPos[1] = pos.y;
                 sendPacket(pkt);
-       
-        _continue:         
+            }
+
+        _continue:
             update(); // update game state; entities
+        }
+        else
+        {
+            // waiting for connection screen
+            // start networking again -> try to connect again
+            startNetworking(); // reset networking state gets called inside
         }
 
         // Draw
@@ -184,13 +271,15 @@ void Game::run()
         }
         else if (endGame)
         {
-            DrawText(endText.c_str(), screenWidth / 2 - MeasureText(endText.c_str(), 40) / 2, screenHeight / 2 - 20, 40, BLACK);
+            DrawText(endText.c_str(), screenWidth / 2 - MeasureText(endText.c_str(), 40) / 2, screenHeight / 2 - 80, 40, BLACK);
+            DrawText("Press ESC to exit, or press the button to play again.", screenWidth / 2 - MeasureText("Press ESC to exit, or press the button to play again.", 20) / 2, screenHeight / 2 - 30, 20, BLACK);
+            restartButton.draw();
         }
-        else if (clientConnected)
+        else if (clientConnected || true)
         {
             // draw currency
             Vector2 currencyPos = {780.f, 40.f};
-            DrawTextureEx(coinTexture, {currencyPos.x-110.f, currencyPos.y-20.f}, 0.f, 0.1f, WHITE);
+            DrawTextureEx(coinTexture, {currencyPos.x - 110.f, currencyPos.y - 20.f}, 0.f, 0.1f, WHITE);
             DrawText(std::to_string(currency).c_str(), currencyPos.x - 90.f, currencyPos.y, 25, WHITE);
 
             for (auto &entity : entities)
@@ -210,6 +299,7 @@ void Game::run()
         }
         else
         {
+            // waiting for connection (start or reconnect)
             DrawText(runAsServer ? "You are Player 1 (Blue)" : "You are Player 2 (Red)", 10, 10, 20, BLACK);
         }
 
@@ -221,6 +311,8 @@ void Game::update()
 {
     std::unordered_map<Entity *, float> pendingDamage;
     std::unordered_set<Entity *> shooters;
+
+    std::array<float, 2> damageDealtThisFrame{{0.f, 0.f}};
 
     // get all attacks this frame
     for (Entity *attacker : entities)
@@ -237,9 +329,28 @@ void Game::update()
         Entity *target = attacker->bestEnt(entities);
         if (target != nullptr)
         {
-            pendingDamage[target] += attacker->getDamage();
+            const float dmg = attacker->getDamage();
+            pendingDamage[target] += dmg;
             shooters.insert(attacker);
+
+            const int team = attacker->getTeam();
+            if (team == 0 || team == 1)
+            {
+                damageDealtThisFrame[(size_t)team] += dmg;
+            }
         }
+    }
+
+    // +1 for every 20 damage dealt
+    const int localTeam = runAsServer ? 0 : 1;
+    damageBank[(size_t)localTeam] += damageDealtThisFrame[(size_t)localTeam];
+    if (damageBank[(size_t)localTeam] >= 20.f) // at least 20 damage dealt
+    {
+        const int earned = (int)(damageBank[(size_t)localTeam] / 20.f);
+        // could be exploited if damage dealt is extremely high
+        int cappedEarned = std::min(earned, 2); // max 2 currency per frame
+        currency += cappedEarned;
+        damageBank[(size_t)localTeam] -= 20.f * (float)cappedEarned;
     }
 
     // apply all attacks
@@ -253,7 +364,8 @@ void Game::update()
         if (dynamic_cast<Base *>(target) && target->getHealth() <= 0)
         {
             endGame = true;
-            endText = (target->getTeam() == 0) ? "Player 2 Wins!" : "Player 1 Wins!";
+            endText = std::string((target->getTeam() == 0) ? "The Flag goes to Player 2!" : "The Flag goes to Player 1!");
+
             return;
         }
     }
@@ -331,11 +443,11 @@ bool Game::resolveCollisions()
                 continue;
             }
 
-            // same-team collision: both stay where they were at the beginning of this step
+            // same team collision: can overlap; code block used for other purposes
             if (a->getTeam() == b->getTeam())
             {
                 continue;
-COLLISION:
+            COLLISION:
                 auto ita = startPos.find(a);
                 if (ita != startPos.end())
                     a->setPosition(ita->second);
@@ -348,13 +460,9 @@ COLLISION:
             }
 
             // cavalry collision different teams: push, only if in combat zone
-            if ((a->getTeam() == 1 && a->getPosition().y <= 250.f)
-                || (b->getTeam() == 1 && b->getPosition().y <= 250.f)
-                || (a->getTeam() == 0 && a->getPosition().y >= 550.f)
-                || (b->getTeam() == 0 && b->getPosition().y >= 550.f)
-            )
+            if ((a->getTeam() == 1 && a->getPosition().y <= 250.f) || (b->getTeam() == 1 && b->getPosition().y <= 250.f) || (a->getTeam() == 0 && a->getPosition().y >= 550.f) || (b->getTeam() == 0 && b->getPosition().y >= 550.f))
                 goto COLLISION;
-            
+
             float penetration = minDist - dist;
             Vector2 normal = Vector2Scale(delta, 1.0f / dist);
 
@@ -365,6 +473,49 @@ COLLISION:
     }
 
     return anyCollision;
+}
+
+void Game::restartGame()
+{
+    // reset networking (threads + enet)
+    resetNetworkingState();
+
+    // clear all entities except bases
+    for (auto it = entities.begin(); it != entities.end();)
+    {
+        Entity *entity = *it;
+        if (!entity)
+        {
+            it = entities.erase(it);
+            continue;
+        }
+
+        if (dynamic_cast<Base *>(entity))
+        {
+            // reset base health
+            entity->setHealth(1000.f);
+            it++;
+            continue;
+        }
+
+        delete entity;
+        it = entities.erase(it);
+    }
+
+    // reset game variables
+    currency = 30;
+    damageBank = {{0.f, 0.f}};
+    endText = "";
+    endGame = false;
+    beginGame = true;
+    dt = 0.f;
+    startPos.clear();
+    nextLocalEntitySeq = 1;
+    lastReceived = "";
+    selectedTroop = false;
+    selectedEntity = nullptr;
+    mousePoint = {0, 0};
+    // reset to starting game screen -> reconnection of players needed
 }
 
 void Game::destroyEntityPtr(Entity *entity)
@@ -434,19 +585,36 @@ void Game::getPacketsIn()
         case TroopType::Infantry:
         {
             Vector2 spawnPos = (runAsServer) ? startPosPlayer2 : startPosPlayer1;
-            entities.push_back(new Infantry(spawnPos, runAsServer ? 1 : 0, Vector2{(float)pkt.desiredPos[0], (float)pkt.desiredPos[1]}));
+            Entity *ent = new Infantry(spawnPos, runAsServer ? 1 : 0, Vector2{(float)pkt.desiredPos[0], (float)pkt.desiredPos[1]});
+            ent->setID(pkt.entityId);
+            entities.push_back(ent);
             break;
         }
         case TroopType::Cavallry:
         {
             Vector2 spawnPos = (runAsServer) ? startPosPlayer2 : startPosPlayer1;
-            entities.push_back(new Cavalry(spawnPos, runAsServer ? 1 : 0, Vector2{ (float)pkt.desiredPos[0], (float)pkt.desiredPos[1] }));
+            Entity *ent = new Cavalry(spawnPos, runAsServer ? 1 : 0, Vector2{(float)pkt.desiredPos[0], (float)pkt.desiredPos[1]});
+            ent->setID(pkt.entityId);
+            entities.push_back(ent);
             break;
         }
         case TroopType::Artillery:
         {
             Vector2 spawnPos = (runAsServer) ? startPosPlayer2 : startPosPlayer1;
-            entities.push_back(new Artillery(spawnPos, runAsServer ? 1 : 0, Vector2{ (float)pkt.desiredPos[0], (float)pkt.desiredPos[1] }));
+            Entity *ent = new Artillery(spawnPos, runAsServer ? 1 : 0, Vector2{(float)pkt.desiredPos[0], (float)pkt.desiredPos[1]});
+            ent->setID(pkt.entityId);
+            entities.push_back(ent);
+            break;
+        }
+        case TroopType::Change:
+        {
+            auto it = std::find_if(entities.begin(), entities.end(), [&](Entity *e)
+                                   { return e && e->getID() == pkt.entityId; });
+
+            if (it != entities.end())
+            {
+                (*it)->setDesiredPosition(Vector2{(float)pkt.desiredPos[0], (float)pkt.desiredPos[1]});
+            }
             break;
         }
         case TroopType::None:
@@ -519,6 +687,9 @@ void Game::networkThreadMain()
 
 void Game::startNetworking()
 {
+    // Make restart/reconnect safe: never reuse an active thread/host.
+    resetNetworkingState();
+
     if (runAsServer)
     {
         network.startServer(1234);
@@ -536,4 +707,31 @@ void Game::startNetworking()
         std::cout << "Searching for server on LAN...\n";
         startNetworkThread();
     }
+}
+
+Entity *Game::searchForTroopAt(Vector2 worldPos)
+{
+    for (auto &entity : entities)
+    {
+        if (!entity)
+            continue;
+
+        if (entity->getTeam() != (runAsServer ? 0 : 1)) // only own troops
+            continue;
+
+        if (dynamic_cast<Base *>(entity)) // no bases for changing position
+            continue;
+
+        Vector2 entPos = entity->getPosition();
+        float radius = entity->getCircleCollider().radius;
+
+        float dist = Vector2Distance(entPos, worldPos);
+        if (dist <= radius)
+        {
+            // found troop
+            return entity;
+        }
+    }
+
+    return nullptr;
 }

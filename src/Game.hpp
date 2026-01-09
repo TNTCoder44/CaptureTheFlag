@@ -16,6 +16,7 @@
 #include <thread>
 #include <atomic>
 #include <unordered_map>
+#include <array>
 
 #include "utils/Packets.hpp"
 #include "utils/Button.hpp"
@@ -65,6 +66,7 @@ private:
 
     Button player1Button;
     Button player2Button;
+    Button restartButton;
 
     bool beginGame;
     bool endGame;
@@ -76,11 +78,19 @@ private:
     Texture2D coinTexture;
     int currency = 30;
 
+    // reward mechanic: every 20 damage dealt by a player grants +1 currency.
+    std::array<float, 2> damageBank{{0.f, 0.f}};
+
     const int income = 3;
 
     const int infantryCost = 20;
     const int cavalryCost = 25;
     const int artilleryCost = 40;
+
+    int nextLocalEntitySeq = 1;
+    int allocateEntityId(int team);
+    bool selectedTroop = false;
+    Entity* selectedEntity = nullptr;
 
 public:
     Game();
@@ -91,6 +101,9 @@ public:
 private:
     void startNetworking();
 
+    void resetNetworkingState();
+    void stopBroadcastThread();
+
     void startNetworkThread();
     void stopNetworkThread();
     void networkThreadMain();
@@ -99,6 +112,9 @@ private:
 
     void update();
     bool resolveCollisions();
+    void restartGame();
+
+    Entity *searchForTroopAt(Vector2 worldPos);
 
     void destroyEntityPtr(Entity *entity);
     void destroyEntityID(int id);
