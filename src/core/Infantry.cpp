@@ -3,6 +3,7 @@
 #include <iostream>
 #include <stdexcept>
 
+#include "../utils/AudioManager.hpp"
 #include "../utils/Filesystem.hpp"
 #include "../utils/ViewTransform.hpp"
 #include "../utils/Math.hpp"
@@ -72,6 +73,8 @@ void Infantry::update(float dt, bool shotsFired)
 
     if (!isShooting) // only move player if no shots fired; cannot move and shoot at the same time
     {
+		if (position != desiredPosition)
+			AudioManager::getInstance().Play(SoundId::March, 0.1f);
         position += computeMovement(dt);
     }
 }

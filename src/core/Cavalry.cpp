@@ -6,6 +6,7 @@
 #include "../utils/Filesystem.hpp"
 #include "../utils/ViewTransform.hpp"
 #include "../utils/Math.hpp"
+#include "../utils/AudioManager.hpp"
 
 Cavalry::Cavalry(Vector2 pos, int team, Vector2 desiredPos) : Entity(pos, team)
 {
@@ -74,7 +75,11 @@ void Cavalry::update(float dt, bool shotsFired)
     
     // compute movement always because cavalry can move while shooting
     if (attackMove)
+    {
+        if (position != desiredPosition)
+			AudioManager::getInstance().Play(SoundId::March, 0.1f);
         position += computeMovement(dt);
+    }
 }
 
 void Cavalry::draw(bool inverted)

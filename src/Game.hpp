@@ -92,6 +92,13 @@ private:
     bool selectedTroop = false;
     Entity* selectedEntity = nullptr;
 
+    struct DrawMarker
+    {
+        Vector2 pos;
+        float timeLeft;
+	};
+	std::vector<DrawMarker> drawPos;
+
 public:
     Game();
     ~Game();

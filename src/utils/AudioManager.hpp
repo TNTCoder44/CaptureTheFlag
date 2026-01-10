@@ -6,8 +6,8 @@
 enum class SoundId { // different sound effects
     March,
     ArtilleryAttack,
-    BaseDestroyed,
-    UIClick,
+    NormalAttack,
+    ButtonClick,
     Victory,
     Defeat
 };
@@ -22,7 +22,8 @@ public:
     void Shutdown();
 
     void Play(SoundId id, float volume = 1.0f);
-    
+	void PlayMusic();
+    void StopMusic();
 
 private:
     std::unordered_map<SoundId, Sound> sounds;

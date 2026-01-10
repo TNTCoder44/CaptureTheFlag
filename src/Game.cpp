@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <unordered_map>
 #include <unordered_set>
+#include <minmax.h>
 
 #include "utils/Math.hpp"
 #include "utils/ViewTransform.hpp"
@@ -29,9 +30,11 @@ Game::Game()
 #endif
 
     SetTargetFPS(120);
+	SetExitKey(KEY_NULL); // disable ESC exit
     
     // Init audio
     AudioManager::getInstance().Init(true);
+    AudioManager::getInstance().PlayMusic();
 
     // init utils
     player1Button.init(FileSystem::getPath("res/utils/player1.png").c_str(), {300, 150}, 1.1f);
@@ -128,21 +131,27 @@ void Game::run()
         mousePoint = GetMousePosition(); // current mouse pos
         bool mousePressed = IsMouseButtonPressed(MOUSE_LEFT_BUTTON);
 
+        AudioManager::getInstance().Update();
+
         if (beginGame) // start of the game, starting screen
         {
             player1Button.update(mousePoint);
             player2Button.update(mousePoint);
             if (player1Button.isPressed())
             {
+                AudioManager::getInstance().Play(SoundId::ButtonClick);
                 runAsServer = true;
                 startNetworking();
                 beginGame = false;
+                AudioManager::getInstance().StopMusic();
             }
             else if (player2Button.isPressed())
             {
+                AudioManager::getInstance().Play(SoundId::ButtonClick);
                 runAsServer = false;
                 startNetworking();
                 beginGame = false;
+                AudioManager::getInstance().StopMusic();
             }
         }
         else if (endGame)
@@ -151,10 +160,17 @@ void Game::run()
             restartButton.update(mousePoint);
             if (restartButton.isPressed())
             {
+                AudioManager::getInstance().Play(SoundId::ButtonClick);
                 restartGame();
             }
+
+			if (IsKeyDown(KEY_ESCAPE))
+            {
+                running = false;
+                continue; // directly stop loop
+            }
         }
-        else if (clientConnected || true) // main game loop
+        else if (clientConnected) // main game loop
         {
             // get all packets sent by server/client
             getPacketsIn();
@@ -166,6 +182,18 @@ void Game::run()
             {
                 currency += income;
                 incomeTimer = 0.f;
+            }
+
+            // update drawPos timers
+            for (auto it = drawPos.begin(); it != drawPos.end();)
+            {
+                it->timeLeft -= dt;
+                if (it->timeLeft <= 0.0f)
+                {
+                    it = drawPos.erase(it);
+                    continue;
+                }
+                ++it;
             }
 
             // handle mouse input for rearranging troops
@@ -192,6 +220,8 @@ void Game::run()
                     pkt.desiredPos[1] = worldPos.y;
                     selectedEntity->setDesiredPosition(worldPos);
                     sendPacket(pkt);
+
+                    drawPos.push_back(DrawMarker{worldPos, 2.0f});
 
                     selectedTroop = false;
                     selectedEntity = nullptr;
@@ -252,6 +282,7 @@ void Game::run()
 
             if (pkt.type != TroopType::None)
             {
+                drawPos.push_back(DrawMarker{pos, 2.0f});
                 pkt.desiredPos[0] = pos.x;
                 pkt.desiredPos[1] = pos.y;
                 sendPacket(pkt);
@@ -264,7 +295,8 @@ void Game::run()
         {
             // waiting for connection screen
             // start networking again -> try to connect again
-            startNetworking(); // reset networking state gets called inside
+			if (!networkThreadRunning)
+				startNetworking(); // reset networking state gets called inside
         }
 
         // Draw
@@ -284,13 +316,21 @@ void Game::run()
             DrawText("Press ESC to exit, or press the button to play again.", screenWidth / 2 - MeasureText("Press ESC to exit, or press the button to play again.", 20) / 2, screenHeight / 2 - 30, 20, BLACK);
             restartButton.draw();
         }
-        else if (clientConnected || true)
+        else if (clientConnected)
         {
             // draw currency
             Vector2 currencyPos = {780.f, 40.f};
             DrawTextureEx(coinTexture, {currencyPos.x - 110.f, currencyPos.y - 20.f}, 0.f, 0.1f, WHITE);
             DrawText(std::to_string(currency).c_str(), currencyPos.x - 90.f, currencyPos.y, 25, WHITE);
 
+            // draw desired position
+            for (auto &marker : drawPos)
+            {
+                Vector2 viewPos = WorldToView(marker.pos, !runAsServer);
+                DrawCircle(viewPos.x, viewPos.y, 7.f, BROWN);
+            }
+
+			// draw all entities
             for (auto &entity : entities)
             {
                 entity->draw(!runAsServer);
@@ -342,6 +382,15 @@ void Game::update()
             pendingDamage[target] += dmg;
             shooters.insert(attacker);
 
+            if (dynamic_cast<Artillery*>(attacker))
+            {
+                AudioManager::getInstance().Play(SoundId::ArtilleryAttack, 0.8f);
+            }
+            else
+            {
+                AudioManager::getInstance().Play(SoundId::NormalAttack, 0.1f);
+			}
+
             const int team = attacker->getTeam();
             if (team == 0 || team == 1)
             {
@@ -350,14 +399,14 @@ void Game::update()
         }
     }
 
-    // +1 for every 20 damage dealt
+	// +1 for every 20 damage dealt; currency reward
     const int localTeam = runAsServer ? 0 : 1;
     damageBank[(size_t)localTeam] += damageDealtThisFrame[(size_t)localTeam];
     if (damageBank[(size_t)localTeam] >= 20.f) // at least 20 damage dealt
     {
         const int earned = (int)(damageBank[(size_t)localTeam] / 20.f);
         // could be exploited if damage dealt is extremely high
-        int cappedEarned = std::min(earned, 2); // max 2 currency per frame
+        int cappedEarned = min(earned, 2); // max 2 currency per frame
         currency += cappedEarned;
         damageBank[(size_t)localTeam] -= 20.f * (float)cappedEarned;
     }
@@ -374,6 +423,13 @@ void Game::update()
         {
             endGame = true;
             endText = std::string((target->getTeam() == 0) ? "The Flag goes to Player 2!" : "The Flag goes to Player 1!");
+
+            AudioManager::getInstance().PlayMusic();
+
+			if ((target->getTeam() == 0 && runAsServer) || (target->getTeam() == 1 && !runAsServer))
+                AudioManager::getInstance().Play(SoundId::Defeat);
+            else
+				AudioManager::getInstance().Play(SoundId::Victory);
 
             return;
         }
@@ -559,7 +615,7 @@ void Game::startNetworkThread()
 
     networkThreadRunning = true;
     networkThread = std::thread([this]()
-                                { networkThreadMain(); });
+    { networkThreadMain(); });
 }
 
 void Game::stopNetworkThread()
