@@ -37,11 +37,13 @@ Game::Game()
     AudioManager::getInstance().PlayMusic();
 
     // init utils
-    player1Button.init(FileSystem::getPath("res/utils/player1.png").c_str(), {300, 150}, 1.1f);
-    player2Button.init(FileSystem::getPath("res/utils/player2.png").c_str(), {300, 300}, 1.1f);
+    player1Button.init(FileSystem::getPath("res/utils/player1.png").c_str(), {280, 150}, 1.1f);
+    player2Button.init(FileSystem::getPath("res/utils/player2.png").c_str(), {280, 340}, 1.1f);
     restartButton.init(FileSystem::getPath("res/utils/restart.png").c_str(), {250, 500}, 1.1f);
 
-    background = LoadTexture(FileSystem::getPath("res/utils/background.png").c_str());
+    backgroundGame = LoadTexture(FileSystem::getPath("res/utils/background.png").c_str());
+	backgroundStart = LoadTexture(FileSystem::getPath("res/utils/startscreen.png").c_str());
+
     coinTexture = LoadTexture(FileSystem::getPath("res/utils/coin.png").c_str());
 
     // Base, position later determined
@@ -70,7 +72,7 @@ Game::~Game()
     entities.clear();
 
     // network already shut down by resetNetworkingState()
-    UnloadTexture(background); // Unload button texture
+    UnloadTexture(backgroundGame); // Unload button texture
     UnloadTexture(coinTexture);
 
     AudioManager::getInstance().Shutdown();
@@ -302,22 +304,25 @@ void Game::run()
         // Draw
         BeginDrawing();
         ClearBackground(WHITE);
-        // DrawTexture(background, 0, 0, WHITE);
         // DrawFPS(10, 10);
 
         if (beginGame)
         {
+            DrawTexture(backgroundStart, 0, 0, WHITE);
             player1Button.draw();
             player2Button.draw();
         }
         else if (endGame)
         {
+            DrawTexture(backgroundStart, 0, 0, WHITE);
             DrawText(endText.c_str(), screenWidth / 2 - MeasureText(endText.c_str(), 40) / 2, screenHeight / 2 - 80, 40, BLACK);
             DrawText("Press ESC to exit, or press the button to play again.", screenWidth / 2 - MeasureText("Press ESC to exit, or press the button to play again.", 20) / 2, screenHeight / 2 - 30, 20, BLACK);
             restartButton.draw();
         }
         else if (clientConnected)
         {
+            DrawTexture(backgroundGame, 0, 0, WHITE);
+
             // draw currency
             Vector2 currencyPos = {780.f, 40.f};
             DrawTextureEx(coinTexture, {currencyPos.x - 110.f, currencyPos.y - 20.f}, 0.f, 0.1f, WHITE);
@@ -327,7 +332,7 @@ void Game::run()
             for (auto &marker : drawPos)
             {
                 Vector2 viewPos = WorldToView(marker.pos, !runAsServer);
-                DrawCircle(viewPos.x, viewPos.y, 7.f, BROWN);
+                DrawCircle(viewPos.x, viewPos.y, 7.f, YELLOW);
             }
 
 			// draw all entities
@@ -349,6 +354,7 @@ void Game::run()
         else
         {
             // waiting for connection (start or reconnect)
+            DrawTexture(backgroundStart, 0, 0, WHITE);
             DrawText(runAsServer ? "You are Player 1 (Blue)" : "You are Player 2 (Red)", 10, 10, 20, BLACK);
         }
 

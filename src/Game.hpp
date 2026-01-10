@@ -34,7 +34,8 @@ private:
 
     Vector2 mousePoint;
 
-    Texture2D background;
+    Texture2D backgroundStart;
+	Texture2D backgroundGame;
 
     // networking variables
     NetworkManager network;
@@ -83,7 +84,7 @@ private:
 
     const int income = 3;
 
-    const int infantryCost = 20;
+    const int infantryCost = 15;
     const int cavalryCost = 25;
     const int artilleryCost = 40;
 
