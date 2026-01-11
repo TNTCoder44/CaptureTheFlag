@@ -18,8 +18,8 @@ cd CaptureTheFlag
 ## Projekt konfigurieren
 
 ### Windows:
-	Direkt mit Visual Studio öffnen und CMake-Projekt generieren.
-	Visual Studio unterstützt CMake nativ.
+Direkt den Ordner mit Visual Studio öffnen und CMake-Projekt generieren.
+Visual Studio unterstützt CMake nativ.
 
 ### Linux/macOS:
 
