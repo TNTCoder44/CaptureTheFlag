@@ -14,7 +14,7 @@ private:
     const float attackCooldown = 2.f; // seconds
     const float maxHealth = 200.f;
     float attackRange = 200.0f;
-    const float damage = 50.0f; // 10 dmg / s
+    const float damage = 50.0f; // 25 dmg / s
 
     float speed = 10.f; // units per second
 
