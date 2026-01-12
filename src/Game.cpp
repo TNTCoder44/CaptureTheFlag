@@ -6,11 +6,14 @@
 #include <algorithm>
 #include <unordered_map>
 #include <unordered_set>
-#include <minmax.h>
 
 #include "utils/Math.hpp"
 #include "utils/ViewTransform.hpp"
 #include "utils/AudioManager.hpp"
+
+#ifdef _WIN32
+#include <minmax.h>
+#endif
 
 #include "core/Infantry.hpp"
 #include "core/Cavalry.hpp"
@@ -80,7 +83,7 @@ Game::~Game()
     CloseWindow(); // Close window and OpenGL context
 }
 
-int Game::allocateEntityId(int team)
+int32_t Game::allocateEntityId(int team)
 {
     // Encode team in top 8 bits to avoid collisions between client / server and the two teams
     // Low 24 bits are an increasing counter for the local player (id -> 1, 2, 3...)
@@ -412,7 +415,12 @@ void Game::update()
     {
         const int earned = (int)(damageBank[(size_t)localTeam] / 20.f);
         // could be exploited if damage dealt is extremely high
-        int cappedEarned = min(earned, 2); // max 2 currency per frame
+#ifdef _WIN32
+        const int cappedEarned = min(earned, 2); // max 2 currency per frame
+#else
+        const int cappedEarned = std::min(earned, 2); // max 2 currency per frame
+#endif
+        //int cappedEarned = fmin(earned, 2); // max 2 currency per frame
         currency += cappedEarned;
         damageBank[(size_t)localTeam] -= 20.f * (float)cappedEarned;
     }

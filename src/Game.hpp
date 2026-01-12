@@ -89,7 +89,6 @@ private:
     const int artilleryCost = 40;
 
     int nextLocalEntitySeq = 1;
-    int allocateEntityId(int team);
     bool selectedTroop = false;
     Entity* selectedEntity = nullptr;
 
@@ -123,6 +122,7 @@ private:
     void restartGame();
 
     Entity *searchForTroopAt(Vector2 worldPos);
+    int32_t allocateEntityId(int team);
 
     void destroyEntityPtr(Entity *entity);
     void destroyEntityID(int id);
